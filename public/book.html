@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 예약 정보 입력</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>예약 정보 입력</h1>
+    <p class="sub">예약자 정보를 입력하고 예약을 확정하세요.</p>
+
+    <div class="alert error hidden" data-testid="booking-error" role="alert"></div>
+    <p class="loading" data-testid="booking-loading">불러오는 중...</p>
+
+    <section class="hidden" data-testid="booking-section">
+      <div class="card" data-testid="booking-summary">
+        <h2>예약 요약</h2>
+        <div class="summary-row"><span>호텔</span><span data-testid="booking-hotel-name"></span></div>
+        <div class="summary-row"><span>객실</span><span data-testid="booking-room-name"></span></div>
+        <div class="summary-row"><span>일정</span><span data-testid="booking-dates"></span></div>
+        <div class="summary-row"><span>숙박</span><span data-testid="booking-nights"></span></div>
+        <div class="summary-row"><span>인원</span><span data-testid="booking-guests"></span></div>
+        <div class="summary-row"><span>1박 요금</span><span data-testid="booking-price-per-night"></span></div>
+        <div class="summary-row total"><span>총 결제 금액</span><span data-testid="booking-total"></span></div>
+      </div>
+
+      <form class="card" id="booking-form" data-testid="booking-form" novalidate>
+        <h2>예약자 정보</h2>
+        <div class="field">
+          <label for="name">이름</label>
+          <input id="name" name="name" maxlength="50" autocomplete="name" data-testid="guest-name">
+          <div class="field-error" data-testid="guest-name-error"></div>
+        </div>
+        <div class="field">
+          <label for="email">이메일</label>
+          <input id="email" name="email" type="email" autocomplete="email" data-testid="guest-email">
+          <div class="field-error" data-testid="guest-email-error"></div>
+        </div>
+        <div class="field">
+          <label for="phone">전화번호</label>
+          <input id="phone" name="phone" type="tel" placeholder="010-1234-5678" autocomplete="tel" data-testid="guest-phone">
+          <div class="field-error" data-testid="guest-phone-error"></div>
+        </div>
+        <button type="submit" class="btn block" data-testid="booking-submit">예약 확정</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const hotelId = App.param('hotelId');
+      const roomId = Number(App.param('roomId'));
+      const stay = App.stay();
+      const errorBox = App.$('booking-error');
+
+      if (!hotelId || !roomId || !stay.checkIn || !stay.checkOut || !stay.guests) {
+        App.hide(App.$('booking-loading'));
+        App.show(errorBox, '예약 정보가 올바르지 않습니다. 호텔 검색부터 다시 진행해 주세요.');
+        return;
+      }
+
+      let hotel, room;
+      try {
+        const data = await App.api(`/api/hotels/${encodeURIComponent(hotelId)}/rooms`);
+        hotel = data.hotel;
+        room = data.rooms.find((r) => r.id === roomId);
+        if (!room) throw new Error('선택한 객실을 찾을 수 없습니다.');
+      } catch (e) {
+        App.hide(App.$('booking-loading'));
+        App.show(errorBox, e.message);
+        return;
+      }
+
+      const nights = App.nights(stay.checkIn, stay.checkOut);
+      const total = room.pricePerNight * nights;
+
+      App.hide(App.$('booking-loading'));
+      App.show(App.$('booking-section'));
+      App.$('booking-hotel-name').textContent = hotel.name;
+      App.$('booking-room-name').textContent = room.name;
+      App.$('booking-dates').textContent = `${stay.checkIn} ~ ${stay.checkOut}`;
+      App.$('booking-nights').textContent = `${nights}박`;
+      App.$('booking-guests').textContent = `${stay.guests}명`;
+      App.$('booking-price-per-night').textContent = App.won(room.pricePerNight);
+      App.$('booking-total').textContent = App.won(total);
+
+      const fields = {
+        name: App.$('guest-name'),
+        email: App.$('guest-email'),
+        phone: App.$('guest-phone'),
+      };
+
+      function setFieldError(key, message) {
+        fields[key].classList.toggle('invalid', Boolean(message));
+        App.$(`guest-${key}-error`).textContent = message || '';
+      }
+
+      Object.keys(fields).forEach((k) => {
+        fields[k].addEventListener('input', () => setFieldError(k, ''));
+      });
+
+      function validate() {
+        const errors = {};
+        const name = fields.name.value.trim();
+        const email = fields.email.value.trim();
+        const phone = fields.phone.value.trim();
+        if (!name) errors.name = '이름을 입력해 주세요.';
+        if (!email) errors.email = '이메일을 입력해 주세요.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.email = '이메일 형식이 올바르지 않습니다.';
+        if (!phone) errors.phone = '전화번호를 입력해 주세요.';
+        else if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) errors.phone = '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)';
+        Object.keys(fields).forEach((k) => setFieldError(k, errors[k]));
+        return Object.keys(errors).length === 0;
+      }
+
+      const submit = App.$('booking-submit');
+      document.getElementById('booking-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        App.hide(errorBox);
+        if (!validate()) return;
+
+        submit.disabled = true;
+        submit.textContent = '예약 처리 중...';
+        try {
+          const reservation = await App.api('/api/reservations', {
+            method: 'POST',
+            body: JSON.stringify({
+              roomId,
+              checkIn: stay.checkIn,
+              checkOut: stay.checkOut,
+              guests: Number(stay.guests),
+              name: fields.name.value.trim(),
+              email: fields.email.value.trim(),
+              phone: fields.phone.value.trim(),
+            }),
+          });
+
+          sessionStorage.setItem('lastBooking', JSON.stringify({
+            id: reservation.id,
+            hotelName: hotel.name,
+            roomName: room.name,
+            checkIn: stay.checkIn,
+            checkOut: stay.checkOut,
+            nights,
+            guests: Number(stay.guests),
+            guestName: fields.name.value.trim(),
+            email: fields.email.value.trim(),
+            total,
+          }));
+          location.href = 'complete.html?' + App.query({ id: reservation.id });
+        } catch (err) {
+          if (err.details) Object.entries(err.details).forEach(([k, v]) => fields[k] && setFieldError(k, v));
+          App.show(errorBox, err.message);
+          submit.disabled = false;
+          submit.textContent = '예약 확정';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 내 예약 조회</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>내 예약 조회</h1>
+    <p class="sub">예약번호와 예약 시 입력한 이메일을 입력해 주세요.</p>
+
+    <form class="card" id="lookup-form" data-testid="lookup-form" novalidate>
+      <div class="alert error hidden" data-testid="lookup-error" role="alert"></div>
+      <div class="grid">
+        <div class="field">
+          <label for="rid">예약번호</label>
+          <input id="rid" placeholder="RSV-XXXXXXXX" data-testid="lookup-id">
+        </div>
+        <div class="field">
+          <label for="lemail">이메일</label>
+          <input id="lemail" type="email" data-testid="lookup-email">
+        </div>
+      </div>
+      <button type="submit" class="btn block" data-testid="lookup-submit">조회하기</button>
+    </form>
+
+    <section class="card hidden" data-testid="reservation-detail">
+      <div class="list-item" style="margin-bottom:10px">
+        <div>
+          <div class="sub" style="margin:0">예약번호</div>
+          <div class="reservation-code" data-testid="reservation-detail-id"></div>
+        </div>
+        <span class="badge" data-testid="reservation-status"></span>
+      </div>
+
+      <div class="alert success hidden" data-testid="cancel-result"></div>
+      <div class="alert error hidden" data-testid="cancel-error" role="alert"></div>
+
+      <div class="summary-row"><span>호텔</span><span data-testid="reservation-hotel-name"></span></div>
+      <div class="summary-row"><span>객실</span><span data-testid="reservation-room-name"></span></div>
+      <div class="summary-row"><span>일정</span><span data-testid="reservation-dates"></span></div>
+      <div class="summary-row"><span>숙박</span><span data-testid="reservation-nights"></span></div>
+      <div class="summary-row"><span>인원</span><span data-testid="reservation-guests"></span></div>
+      <div class="summary-row"><span>예약자</span><span data-testid="reservation-guest-name"></span></div>
+      <div class="summary-row"><span>이메일</span><span data-testid="reservation-email"></span></div>
+      <div class="summary-row"><span>전화번호</span><span data-testid="reservation-phone"></span></div>
+      <div class="summary-row"><span>예약일시</span><span data-testid="reservation-created-at"></span></div>
+      <div class="summary-row hidden" data-testid="reservation-cancelled-row"><span>취소일시</span><span data-testid="reservation-cancelled-at"></span></div>
+      <div class="summary-row total"><span>총 결제 금액</span><span data-testid="reservation-total"></span></div>
+
+      <div class="actions">
+        <button type="button" class="btn danger hidden" data-testid="cancel-btn">예약 취소</button>
+      </div>
+
+      <div class="confirm-box hidden" data-testid="cancel-confirm">
+        <p style="margin:0 0 10px"><strong>정말 예약을 취소하시겠어요?</strong> 취소 후에는 되돌릴 수 없습니다.</p>
+        <div class="actions" style="margin-top:0">
+          <button type="button" class="btn danger" data-testid="cancel-confirm-yes">네, 취소할게요</button>
+          <button type="button" class="btn secondary" data-testid="cancel-confirm-no">아니요</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (() => {
+      const idInput = App.$('lookup-id');
+      const emailInput = App.$('lookup-email');
+      const lookupError = App.$('lookup-error');
+      const detail = App.$('reservation-detail');
+      const cancelBtn = App.$('cancel-btn');
+      const confirmBox = App.$('cancel-confirm');
+      const cancelResult = App.$('cancel-result');
+      const cancelError = App.$('cancel-error');
+      let current = null;
+
+      const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('ko-KR') : '-');
+
+      function render(r) {
+        current = r;
+        App.show(detail);
+        App.$('reservation-detail-id').textContent = r.id;
+
+        const status = App.$('reservation-status');
+        status.dataset.status = r.status;
+        status.textContent = r.status === 'CONFIRMED' ? '예약 확정' : '취소됨';
+        status.className = 'badge ' + (r.status === 'CONFIRMED' ? 'confirmed' : 'cancelled');
+
+        App.$('reservation-hotel-name').textContent = `${r.hotel.name} (${r.hotel.city})`;
+        App.$('reservation-room-name').textContent = r.room.name;
+        App.$('reservation-dates').textContent = `${r.checkIn} ~ ${r.checkOut}`;
+        App.$('reservation-nights').textContent = `${r.nights}박`;
+        App.$('reservation-guests').textContent = `${r.guests}명`;
+        App.$('reservation-guest-name').textContent = r.guestName;
+        App.$('reservation-email').textContent = r.email;
+        App.$('reservation-phone').textContent = r.phone;
+        App.$('reservation-created-at').textContent = fmtDateTime(r.createdAt);
+        App.$('reservation-total').textContent = App.won(r.totalPrice);
+
+        const cancelledRow = App.$('reservation-cancelled-row');
+        if (r.cancelledAt) {
+          App.show(cancelledRow);
+          App.$('reservation-cancelled-at').textContent = fmtDateTime(r.cancelledAt);
+        } else {
+          App.hide(cancelledRow);
+        }
+
+        App.hide(confirmBox);
+        if (r.status === 'CONFIRMED') App.show(cancelBtn);
+        else App.hide(cancelBtn);
+      }
+
+      async function lookup() {
+        App.hide(lookupError);
+        App.hide(cancelResult);
+        App.hide(cancelError);
+        const id = idInput.value.trim();
+        const email = emailInput.value.trim();
+        if (!id || !email) {
+          App.show(lookupError, '예약번호와 이메일을 모두 입력해 주세요.');
+          App.hide(detail);
+          return;
+        }
+        try {
+          const r = await App.api(`/api/reservations/${encodeURIComponent(id)}?` + App.query({ email }));
+          render(r);
+        } catch (e) {
+          App.hide(detail);
+          App.show(lookupError, e.message);
+        }
+      }
+
+      document.getElementById('lookup-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        lookup();
+      });
+
+      cancelBtn.addEventListener('click', () => {
+        App.hide(cancelError);
+        App.show(confirmBox);
+      });
+
+      App.$('cancel-confirm-no').addEventListener('click', () => App.hide(confirmBox));
+
+      App.$('cancel-confirm-yes').addEventListener('click', async () => {
+        const yes = App.$('cancel-confirm-yes');
+        yes.disabled = true;
+        try {
+          const r = await App.api(`/api/reservations/${encodeURIComponent(current.id)}/cancel`, {
+            method: 'POST',
+            body: JSON.stringify({ email: emailInput.value.trim() }),
+          });
+          render(r);
+          App.show(cancelResult, '예약이 취소되었습니다.');
+        } catch (e) {
+          App.hide(confirmBox);
+          App.show(cancelError, e.message);
+        } finally {
+          yes.disabled = false;
+        }
+      });
+
+      idInput.value = App.param('id') || '';
+      emailInput.value = App.param('email') || '';
+      if (idInput.value && emailInput.value) lookup();
+    })();
+  </script>
+</body>
+</html>
