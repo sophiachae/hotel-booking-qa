@@ -1,0 +1,6 @@
+node_modules/
+logs/
+data/
+*.db
+BUGS_SPOILER.md
+.DS_Store

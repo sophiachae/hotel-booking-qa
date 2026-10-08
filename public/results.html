@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 검색 결과</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>검색 결과</h1>
+    <p class="sub" data-testid="results-summary"></p>
+    <p><a href="index.html" data-testid="results-modify-search">← 검색 조건 변경</a></p>
+
+    <div class="alert error hidden" data-testid="results-error" role="alert"></div>
+    <p class="loading" data-testid="results-loading">호텔을 찾는 중...</p>
+    <div class="card empty hidden" data-testid="results-empty">조건에 맞는 호텔이 없습니다. 날짜나 인원을 바꿔 다시 검색해 보세요.</div>
+    <div data-testid="hotel-list"></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const city = App.param('city') || '';
+      const stay = App.stay();
+      const list = App.$('hotel-list');
+      const loading = App.$('results-loading');
+
+      App.$('results-modify-search').href = 'index.html?' + App.query({ city, ...stay });
+      if (stay.checkIn && stay.checkOut) {
+        App.$('results-summary').textContent =
+          `${city} · ${stay.checkIn} ~ ${stay.checkOut} (${App.nights(stay.checkIn, stay.checkOut)}박) · ${stay.guests}명`;
+      }
+
+      try {
+        const hotels = await App.api('/api/hotels?' + App.query({ city, ...stay }));
+        App.hide(loading);
+        App.$('results-summary').textContent += ` · ${hotels.length}개 호텔`;
+        if (hotels.length === 0) {
+          App.show(App.$('results-empty'));
+          return;
+        }
+        list.innerHTML = hotels.map((h) => `
+          <div class="card list-item" data-testid="hotel-card-${h.id}">
+            <div>
+              <h2 data-testid="hotel-name-${h.id}">${App.esc(h.name)}</h2>
+              <div class="meta">${App.esc(h.address)}</div>
+              <div class="meta"><span class="rating">★ ${h.rating.toFixed(1)}</span> · 예약 가능 객실 <span data-testid="hotel-available-rooms-${h.id}">${h.availableRooms}</span>개</div>
+            </div>
+            <div style="text-align:right">
+              <div class="price"><small>1박 최저</small> <span data-testid="hotel-min-price-${h.id}">${App.won(h.minPrice)}</span></div>
+              <a class="btn" style="margin-top:8px" data-testid="hotel-detail-btn-${h.id}"
+                 href="hotel.html?${App.query({ id: h.id, ...stay })}">객실 보기</a>
+            </div>
+          </div>`).join('');
+      } catch (e) {
+        App.hide(loading);
+        App.show(App.$('results-error'), e.message);
+      }
+    })();
+  </script>
+</body>
+</html>

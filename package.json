@@ -1,0 +1,18 @@
+{
+  "name": "mini-hotel-booking",
+  "version": "1.0.0",
+  "description": "QA 포트폴리오용 미니 호텔 예약 웹앱 (테스트 대상 애플리케이션)",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "reset": "node scripts/reset-db.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "express": "^4.21.2"
+  }
+}

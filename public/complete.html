@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 예약 완료</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="alert success" data-testid="complete-message">예약이 완료되었습니다.</div>
+
+    <div class="card" data-testid="complete-section">
+      <div class="sub" style="margin:0">예약번호</div>
+      <div class="reservation-code" data-testid="reservation-id"></div>
+      <p class="sub">예약번호와 이메일로 예약을 조회하거나 취소할 수 있어요.</p>
+
+      <div data-testid="complete-details" class="hidden">
+        <div class="summary-row"><span>호텔</span><span data-testid="complete-hotel-name"></span></div>
+        <div class="summary-row"><span>객실</span><span data-testid="complete-room-name"></span></div>
+        <div class="summary-row"><span>일정</span><span data-testid="complete-dates"></span></div>
+        <div class="summary-row"><span>숙박</span><span data-testid="complete-nights"></span></div>
+        <div class="summary-row"><span>인원</span><span data-testid="complete-guests"></span></div>
+        <div class="summary-row"><span>예약자</span><span data-testid="complete-guest-name"></span></div>
+        <div class="summary-row total"><span>총 결제 금액</span><span data-testid="complete-total"></span></div>
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="my.html" data-testid="complete-go-my-reservation">내 예약 조회</a>
+        <a class="btn secondary" href="index.html" data-testid="complete-go-home">처음으로</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (() => {
+      const id = App.param('id') || '';
+      App.$('reservation-id').textContent = id;
+
+      let booking = null;
+      try {
+        booking = JSON.parse(sessionStorage.getItem('lastBooking') || 'null');
+      } catch (e) {
+        booking = null;
+      }
+
+      if (booking && booking.id === id) {
+        App.show(App.$('complete-details'));
+        App.$('complete-hotel-name').textContent = booking.hotelName;
+        App.$('complete-room-name').textContent = booking.roomName;
+        App.$('complete-dates').textContent = `${booking.checkIn} ~ ${booking.checkOut}`;
+        App.$('complete-nights').textContent = `${booking.nights}박`;
+        App.$('complete-guests').textContent = `${booking.guests}명`;
+        App.$('complete-guest-name').textContent = booking.guestName;
+        App.$('complete-total').textContent = App.won(booking.total);
+        App.$('complete-go-my-reservation').href = 'my.html?' + App.query({ id, email: booking.email });
+      } else {
+        App.$('complete-go-my-reservation').href = 'my.html?' + App.query({ id });
+      }
+    })();
+  </script>
+</body>
+</html>

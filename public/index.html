@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 호텔 검색</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>어디로 떠나시나요?</h1>
+    <p class="sub">도시와 일정을 선택하면 예약 가능한 호텔을 보여드려요.</p>
+
+    <form class="card" id="search-form" data-testid="search-form" novalidate>
+      <div class="alert error hidden" data-testid="search-error" role="alert"></div>
+      <div class="grid">
+        <div class="field">
+          <label for="city">도시</label>
+          <select id="city" name="city" data-testid="search-city">
+            <option value="">도시 선택</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="checkIn">체크인</label>
+          <input type="date" id="checkIn" name="checkIn" data-testid="search-checkin">
+        </div>
+        <div class="field">
+          <label for="checkOut">체크아웃</label>
+          <input type="date" id="checkOut" name="checkOut" data-testid="search-checkout">
+        </div>
+        <div class="field">
+          <label for="guests">인원</label>
+          <input type="number" id="guests" name="guests" min="1" max="10" value="2" data-testid="search-guests">
+        </div>
+      </div>
+      <button type="submit" class="btn block" data-testid="search-submit">호텔 검색</button>
+    </form>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const form = document.getElementById('search-form');
+      const city = App.$('search-city');
+      const checkIn = App.$('search-checkin');
+      const checkOut = App.$('search-checkout');
+      const guests = App.$('search-guests');
+      const errorBox = App.$('search-error');
+
+      const today = App.dateOffset(0);
+      checkIn.min = today;
+      checkOut.min = App.dateOffset(1);
+
+      try {
+        const cities = await App.api('/api/cities');
+        cities.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          city.appendChild(opt);
+        });
+      } catch (e) {
+        App.show(errorBox, '도시 목록을 불러오지 못했습니다.');
+      }
+
+      city.value = App.param('city') || '';
+      checkIn.value = App.param('checkIn') || App.dateOffset(1);
+      checkOut.value = App.param('checkOut') || App.dateOffset(3);
+      guests.value = App.param('guests') || '2';
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        App.hide(errorBox);
+
+        const g = Number(guests.value);
+        let message = '';
+        if (!city.value) message = '도시를 선택해 주세요.';
+        else if (!checkIn.value || !checkOut.value) message = '체크인/체크아웃 날짜를 선택해 주세요.';
+        else if (checkIn.value < today) message = '체크인 날짜는 오늘 이후여야 합니다.';
+        else if (checkOut.value <= checkIn.value) message = '체크아웃 날짜는 체크인 날짜보다 이후여야 합니다.';
+        else if (!Number.isInteger(g) || g < 1 || g > 10) message = '인원은 1~10명 사이로 입력해 주세요.';
+
+        if (message) {
+          App.show(errorBox, message);
+          return;
+        }
+
+        location.href = 'results.html?' + App.query({
+          city: city.value,
+          checkIn: checkIn.value,
+          checkOut: checkOut.value,
+          guests: g,
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

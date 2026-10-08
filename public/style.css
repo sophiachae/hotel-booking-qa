@@ -1,0 +1,176 @@
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --text: #1f2a2e;
+  --muted: #66727a;
+  --line: #e2ddd3;
+  --brand: #1d5c63;
+  --brand-dark: #154348;
+  --accent: #c8793a;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
+  --ok: #2e7d4f;
+  --ok-bg: #e7f4ec;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+}
+
+a { color: var(--brand); }
+
+.topbar {
+  background: var(--brand);
+  color: #fff;
+}
+.topbar .inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.topbar a { color: #fff; text-decoration: none; }
+.logo { font-weight: 700; font-size: 18px; letter-spacing: -0.3px; }
+.nav a { font-size: 14px; opacity: 0.9; margin-left: 16px; }
+.nav a:hover { opacity: 1; text-decoration: underline; }
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.4px; }
+h2 { font-size: 18px; margin: 0 0 12px; }
+.sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+}
+input:focus, select:focus { outline: 2px solid var(--brand); outline-offset: 0; border-color: var(--brand); }
+input.invalid { border-color: var(--danger); }
+
+.field { margin-bottom: 14px; }
+.field-error { color: var(--danger); font-size: 13px; margin-top: 4px; min-height: 0; }
+
+.btn {
+  display: inline-block;
+  padding: 11px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
+.btn:hover { background: var(--brand-dark); }
+.btn:disabled { background: #a9b4b6; cursor: not-allowed; }
+.btn.secondary { background: #fff; color: var(--brand); border: 1px solid var(--brand); }
+.btn.danger { background: var(--danger); }
+.btn.danger:hover { background: #8e1d17; }
+.btn.block { width: 100%; }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.alert.error { background: var(--danger-bg); color: var(--danger); }
+.alert.success { background: var(--ok-bg); color: var(--ok); }
+.hidden { display: none !important; }
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.list-item .meta { color: var(--muted); font-size: 14px; }
+.price { font-weight: 700; font-size: 18px; }
+.price small { font-weight: 400; color: var(--muted); font-size: 13px; }
+.rating { color: var(--accent); font-weight: 600; }
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--line);
+  font-size: 15px;
+}
+.summary-row:last-child { border-bottom: none; }
+.summary-row span:first-child { color: var(--muted); }
+.summary-row.total { font-size: 17px; font-weight: 700; padding-top: 12px; }
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+}
+.badge.confirmed { background: var(--ok-bg); color: var(--ok); }
+.badge.cancelled { background: #eceff0; color: var(--muted); }
+
+.reservation-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--brand);
+  margin: 6px 0 4px;
+}
+
+.confirm-box {
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.empty { text-align: center; color: var(--muted); padding: 32px 0; }
+.loading { color: var(--muted); }
+
+@media (max-width: 520px) {
+  .nav a { margin-left: 10px; }
+  h1 { font-size: 21px; }
+}
