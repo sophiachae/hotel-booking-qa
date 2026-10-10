@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const express = require('express');
 const { db } = require('./db');
 const u = require('./utils');
+const config = require('./config');
+const { requireAuth } = require('./auth');
 
 const router = express.Router();
 
@@ -23,6 +25,7 @@ function reservationDto(row) {
   return {
     id: row.id,
     status: row.status,
+    bookedAs: row.user_id ? 'MEMBER' : 'GUEST',
     hotel: { id: row.hotel_id, name: row.hotel_name, city: row.hotel_city },
     room: { id: row.room_id, name: row.room_name, pricePerNight: row.price_per_night },
     checkIn: row.check_in,
@@ -79,8 +82,10 @@ function normalizeReservationId(value) {
   return String(value || '').trim().toUpperCase();
 }
 
-function findOwnedReservation(id, email) {
+function findAccessibleReservation(req, id, email) {
   const row = selectReservation.get(normalizeReservationId(id));
+  if (row && req.user && row.user_id === req.user.id) return row;
+  if (!email) throw u.fieldError('email', 'email은 필수입니다.');
   if (!row || row.email.toLowerCase() !== email.toLowerCase()) {
     throw u.notFound('예약번호 또는 이메일이 일치하는 예약이 없습니다.');
   }
@@ -94,7 +99,7 @@ router.get('/cities', (req, res) => {
 
 router.get('/hotels', (req, res) => {
   const city = u.asTrimmedString(req.query.city);
-  if (!city) throw u.badRequest('city는 필수입니다.');
+  if (!city) throw u.fieldError('city', 'city는 필수입니다.');
   const { checkIn, checkOut } = req.query;
   u.validateStay(checkIn, checkOut);
   const guests = u.parseGuests(req.query.guests);
@@ -147,8 +152,30 @@ router.get('/hotels/:id/rooms', (req, res) => {
   res.json({ hotel: hotelDto(hotel), rooms });
 });
 
+router.get('/config', (req, res) => {
+  res.json({ guestCheckout: config.guestCheckout, loginProviders: config.loginProviders });
+});
+
+router.get('/me/reservations', requireAuth, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT r.*, rm.name AS room_name, rm.price_per_night,
+              h.id AS hotel_id, h.name AS hotel_name, h.city AS hotel_city
+       FROM reservations r
+       JOIN rooms rm ON rm.id = r.room_id
+       JOIN hotels h ON h.id = rm.hotel_id
+       WHERE r.user_id = ?
+       ORDER BY r.created_at DESC`
+    )
+    .all(req.user.id);
+  res.json(rows.map(reservationDto));
+});
+
 router.post('/reservations', (req, res) => {
-  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  if (!req.user && !config.guestCheckout) {
+    throw u.unauthorized('회원만 예약할 수 있습니다. 로그인해 주세요.', 'LOGIN_REQUIRED');
+  }
+  const body = u.asObject(req.body);
   const name = u.asTrimmedString(body.name);
   const email = u.asTrimmedString(body.email);
   const phone = u.asTrimmedString(body.phone);
@@ -165,16 +192,16 @@ router.post('/reservations', (req, res) => {
   }
 
   if (body.roomId === undefined || body.roomId === null || body.roomId === '') {
-    throw u.badRequest('roomId는 필수입니다.');
+    throw u.fieldError('roomId', 'roomId는 필수입니다.');
   }
-  const roomId = u.parseId(body.roomId, '객실 ID');
+  const roomId = u.parseId(body.roomId, '객실 ID', 'roomId');
   const nights = u.validateStay(body.checkIn, body.checkOut);
   const guests = u.parseGuests(body.guests);
 
   const room = db.prepare('SELECT * FROM rooms WHERE id = ?').get(roomId);
   if (!room) throw u.notFound('객실을 찾을 수 없습니다.');
   if (guests > room.capacity) {
-    throw u.badRequest(`이 객실의 최대 인원은 ${room.capacity}명입니다.`);
+    throw u.fieldError('guests', `이 객실의 최대 인원은 ${room.capacity}명입니다.`);
   }
 
   const create = db.transaction(() => {
@@ -184,11 +211,12 @@ router.post('/reservations', (req, res) => {
     const id = generateReservationId();
     db.prepare(
       `INSERT INTO reservations
-         (id, room_id, guest_name, email, phone, check_in, check_out, guests, nights, total_price, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?)`
+         (id, room_id, user_id, guest_name, email, phone, check_in, check_out, guests, nights, total_price, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?)`
     ).run(
       id,
       room.id,
+      req.user ? req.user.id : null,
       name,
       email,
       phone,
@@ -208,15 +236,13 @@ router.post('/reservations', (req, res) => {
 
 router.get('/reservations/:id', (req, res) => {
   const email = u.asTrimmedString(req.query.email);
-  if (!email) throw u.badRequest('email은 필수입니다.');
-  const row = findOwnedReservation(req.params.id, email);
+  const row = findAccessibleReservation(req, req.params.id, email);
   res.json(reservationDto(row));
 });
 
 router.post('/reservations/:id/cancel', (req, res) => {
-  const email = u.asTrimmedString(req.body && req.body.email);
-  if (!email) throw u.badRequest('email은 필수입니다.');
-  const row = findOwnedReservation(req.params.id, email);
+  const email = u.asTrimmedString(u.asObject(req.body).email);
+  const row = findAccessibleReservation(req, req.params.id, email);
 
   if (row.status === 'CANCELLED') {
     throw u.conflict('이미 취소된 예약입니다.', 'ALREADY_CANCELLED');

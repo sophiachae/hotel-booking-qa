@@ -1,6 +1,6 @@
 {
   "name": "mini-hotel-booking",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "QA 포트폴리오용 미니 호텔 예약 웹앱 (테스트 대상 애플리케이션)",
   "private": true,
   "main": "server.js",

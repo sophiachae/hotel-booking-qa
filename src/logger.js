@@ -25,8 +25,21 @@ function write(level, message) {
   else console.log(line);
 }
 
+const SECRET_KEYS = ['password', 'passwordConfirm', 'token', 'code', 'state'];
+
+function maskSecrets(params) {
+  const out = { ...params };
+  for (const key of SECRET_KEYS) {
+    if (out[key] !== undefined) out[key] = '***';
+  }
+  return out;
+}
+
 function summarizeResult(body) {
   if (body === undefined || body === null) return '-';
+  if (Object.prototype.hasOwnProperty.call(body, 'user')) {
+    return body.user ? `userId=${body.user.id} provider=${body.user.provider}` : 'user=null';
+  }
   if (body.error) {
     const details = body.error.details ? ` details=${JSON.stringify(body.error.details)}` : '';
     return `${body.error.code}: ${body.error.message}${details}`;
@@ -57,11 +70,16 @@ function requestLogger(req, res, next) {
     if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
       Object.assign(params, req.body);
     }
+    let result = res.locals.logResult || summarizeResult(res.locals.responseBody);
+    if (res.statusCode >= 300 && res.statusCode < 400) {
+      result += ` redirect=${String(res.get('Location') || '').split('?')[0]}`;
+    }
+    const user = req.user ? req.user.id : '-';
     const message =
-      `${endpoint} params=${JSON.stringify(params)} status=${res.statusCode} ` +
-      `result=${summarizeResult(res.locals.responseBody)} (${elapsedMs.toFixed(1)}ms)`;
+      `${endpoint} user=${user} params=${JSON.stringify(maskSecrets(params))} status=${res.statusCode} ` +
+      `result=${result} (${elapsedMs.toFixed(1)}ms)`;
 
-    if (res.statusCode >= 400) {
+    if (res.statusCode >= 400 || res.locals.logLevel === 'ERROR') {
       write('ERROR', message);
       if (res.locals.error && res.locals.error.stack) {
         write('ERROR', `${endpoint} stack=${res.locals.error.stack.replace(/\n\s*/g, ' | ')}`);

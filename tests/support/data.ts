@@ -4,6 +4,9 @@ export const ISSUES = {
   FRONT_OVERLAP: 'https://github.com/sophiachae/hotel-booking-qa/issues/2',
   LOG_PII: 'https://github.com/sophiachae/hotel-booking-qa/issues/3',
   PHONE_FORMAT: 'https://github.com/sophiachae/hotel-booking-qa/issues/5',
+  MEMBER_EMAIL_NOT_FIXED: 'https://github.com/sophiachae/hotel-booking-qa/issues/7',
+  SESSION_EXPIRED_AS_GUEST: 'https://github.com/sophiachae/hotel-booking-qa/issues/8',
+  OAUTH_ERROR_STATE: 'https://github.com/sophiachae/hotel-booking-qa/issues/10',
 } as const;
 
 /** 테스트용 예약자 정보 (실제 개인정보 사용 금지) */

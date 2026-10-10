@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type APIResponse } from '@playwright/test';
+import { expect, type APIRequestContext, type APIResponse, type Page } from '@playwright/test';
 import { GUEST } from './data';
 
 export type ReservationInput = {
@@ -57,4 +57,17 @@ export async function expectValidationError(res: APIResponse, detailsKey?: strin
     expect.soft(body.error?.details ?? {}, `error.details.${detailsKey} 존재`).toHaveProperty(detailsKey);
   }
   return body;
+}
+
+/**
+ * 예약 화면에서 '예약 확정'을 누르고 완료 화면의 예약번호로 예약을 다시 조회한다.
+ * (제출 직후 완료 화면으로 이동해 버려서 POST 응답 본문을 안정적으로 읽을 수 없기 때문)
+ */
+export async function submitBookingAndFetch(page: Page, email: string) {
+  await page.getByTestId('booking-submit').click();
+  await expect(page.getByTestId('reservation-id'), '완료 화면의 예약번호').toHaveText(/^RSV-.{8}$/, { timeout: 10_000 });
+  const id = (await page.getByTestId('reservation-id').textContent())!.trim();
+  const res = await page.request.get(`/api/reservations/${id}?email=${encodeURIComponent(email)}`);
+  expect(res.status(), await res.text()).toBe(200);
+  return res.json();
 }

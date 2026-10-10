@@ -6,11 +6,22 @@ import { E2E_LOG_FILE } from '../support/env';
 
 const D30_32 = stay(30, 32);
 
+/**
+ * v1.1 로그 형식: `[ERROR] GET /api/hotels user=- params={...} status=400 result=... details={...}`
+ * details에도 "city"가 찍히므로 줄 전체가 아니라 params 부분만 파싱해 city가 없는지 판단한다.
+ */
+function isMissingCitySearchError(line: string): boolean {
+  const m = line.match(/\[ERROR\] GET \/api\/hotels user=\S+ params=(\{.*?\}) status=400 /);
+  if (!m) return false;
+  return !('city' in JSON.parse(m[1]));
+}
+
 function hotelsQuery(params: Record<string, string | number>) {
   return '/api/hotels?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
 }
 
-// TC-04, 08, 09: AI 원문 기대결과의 "error.details에 해당 키 존재"는 명세(README)에 근거가 없어 제외함 (TC 리뷰 결과)
+// TC-04, 08, 09: v1.1 명세에 "VALIDATION_ERROR는 항상 details에 필드 키 포함"이 추가되어 details 검증 복구
+// (v1.0에서는 명세에 근거가 없어 제외했던 조건)
 test.describe('GET /api/hotels', () => {
   test('TC-02 인원 조건 필터링', async ({ request }) => {
     const res = await request.get(hotelsQuery({ city: '부산', ...D30_32, guests: 5 }));
@@ -40,7 +51,7 @@ test.describe('GET /api/hotels', () => {
     for (const guests of ['0', '11', '2.5', 'abc']) {
       await test.step(`guests=${guests}`, async () => {
         const res = await request.get(hotelsQuery({ city: '서울', ...D30_32, guests }));
-        await expectValidationError(res);
+        await expectValidationError(res, 'guests');
       });
     }
   });
@@ -61,7 +72,7 @@ test.describe('GET /api/hotels', () => {
         const res = await request.get(
           hotelsQuery({ city: '서울', checkIn, checkOut: daysFromToday(400), guests: 2 }),
         );
-        await expectValidationError(res);
+        await expectValidationError(res, 'checkIn');
       });
     }
   });
@@ -71,16 +82,13 @@ test.describe('GET /api/hotels', () => {
     const logOffset = fs.existsSync(E2E_LOG_FILE) ? fs.statSync(E2E_LOG_FILE).size : 0;
 
     const res = await request.get(hotelsQuery({ ...D30_32, guests: 2 }));
-    await expectValidationError(res);
+    await expectValidationError(res, 'city');
 
     await expect
       .poll(() => {
         const appended = fs.readFileSync(E2E_LOG_FILE).subarray(logOffset).toString('utf8');
-        return appended
-          .split('\n')
-          .filter((l) => l.includes('[ERROR] GET /api/hotels params=') && !l.includes('"city"') && l.includes('status=400'))
-          .length;
-      }, { message: 'app.log에 [ERROR] GET /api/hotels ... status=400 1줄 기록' })
+        return appended.split('\n').filter(isMissingCitySearchError).length;
+      }, { message: 'app.log에 [ERROR] GET /api/hotels user=- params={city 없음} ... status=400 1줄 기록' })
       .toBe(1);
   });
 

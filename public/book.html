@@ -24,6 +24,12 @@
     <div class="alert error hidden" data-testid="booking-error" role="alert"></div>
     <p class="loading" data-testid="booking-loading">불러오는 중...</p>
 
+    <section class="card hidden" data-testid="booking-login-required">
+      <h2>회원 전용 예약</h2>
+      <p class="sub">현재 회원만 예약할 수 있어요. 로그인 후 이어서 예약해 주세요.</p>
+      <a class="btn" href="login.html" data-testid="booking-login-btn">로그인하고 예약하기</a>
+    </section>
+
     <section class="hidden" data-testid="booking-section">
       <div class="card" data-testid="booking-summary">
         <h2>예약 요약</h2>
@@ -38,6 +44,10 @@
 
       <form class="card" id="booking-form" data-testid="booking-form" novalidate>
         <h2>예약자 정보</h2>
+        <div class="notice hidden" data-testid="booking-member-notice"></div>
+        <div class="notice hidden" data-testid="booking-guest-notice">
+          비회원으로 예약 중이에요. <a href="login.html" data-testid="booking-guest-login-link">로그인</a>하면 정보가 자동으로 입력되고 예약 내역을 한 번에 볼 수 있어요.
+        </div>
         <div class="field">
           <label for="name">이름</label>
           <input id="name" name="name" maxlength="50" autocomplete="name" data-testid="guest-name">
@@ -84,10 +94,18 @@
         return;
       }
 
+      const [me, cfg] = await Promise.all([App.me(), App.config()]);
+      App.hide(App.$('booking-loading'));
+
+      if (!me && !cfg.guestCheckout) {
+        App.$('booking-login-btn').href = App.loginUrl();
+        App.show(App.$('booking-login-required'));
+        return;
+      }
+
       const nights = App.nights(stay.checkIn, stay.checkOut);
       const total = room.pricePerNight * nights;
 
-      App.hide(App.$('booking-loading'));
       App.show(App.$('booking-section'));
       App.$('booking-hotel-name').textContent = hotel.name;
       App.$('booking-room-name').textContent = room.name;
@@ -111,6 +129,17 @@
       Object.keys(fields).forEach((k) => {
         fields[k].addEventListener('input', () => setFieldError(k, ''));
       });
+
+      if (me) {
+        fields.name.value = me.name || '';
+        fields.email.value = me.email;
+        fields.email.readOnly = true;
+        fields.phone.value = me.phone || '';
+        App.show(App.$('booking-member-notice'), `${me.name}님, 회원으로 예약합니다. 예약 내역은 '내 예약 조회'에서 바로 확인할 수 있어요.`);
+      } else {
+        App.$('booking-guest-login-link').href = App.loginUrl();
+        App.show(App.$('booking-guest-notice'));
+      }
 
       function validate() {
         const errors = {};
@@ -162,6 +191,14 @@
           }));
           location.href = 'complete.html?' + App.query({ id: reservation.id });
         } catch (err) {
+          if (err.code === 'LOGIN_REQUIRED' || err.status === 401) {
+            App.show(errorBox, err.message);
+            App.$('booking-login-btn').href = App.loginUrl();
+            App.show(App.$('booking-login-required'));
+            submit.disabled = false;
+            submit.textContent = '예약 확정';
+            return;
+          }
           if (err.details) Object.entries(err.details).forEach(([k, v]) => fields[k] && setFieldError(k, v));
           App.show(errorBox, err.message);
           submit.disabled = false;

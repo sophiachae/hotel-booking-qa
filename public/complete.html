@@ -68,6 +68,10 @@
       } else {
         App.$('complete-go-my-reservation').href = 'my.html?' + App.query({ id });
       }
+
+      App.me().then((me) => {
+        if (me) App.$('complete-go-my-reservation').href = 'my.html?' + App.query({ id });
+      });
     })();
   </script>
 </body>

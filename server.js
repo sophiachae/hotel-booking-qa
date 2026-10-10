@@ -1,7 +1,10 @@
 const path = require('path');
 const express = require('express');
 const { seedIfEmpty, DB_PATH } = require('./src/db');
+const config = require('./src/config');
 const logger = require('./src/logger');
+const auth = require('./src/auth');
+const mockOAuth = require('./src/mockOAuth');
 const routes = require('./src/routes');
 const { ApiError, notFound } = require('./src/utils');
 
@@ -10,8 +13,11 @@ const app = express();
 
 app.use('/api', logger.requestLogger);
 app.use(express.json({ limit: '100kb' }));
+app.use('/api', auth.attachUser);
+app.use('/api/auth', auth.router);
 app.use('/api', routes);
 app.use('/api', (req, res, next) => next(notFound('존재하지 않는 API입니다.')));
+app.use('/mock-oauth', mockOAuth.router);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // eslint-disable-next-line no-unused-vars
@@ -31,5 +37,8 @@ app.use((err, req, res, next) => {
 const seeded = seedIfEmpty();
 
 app.listen(PORT, () => {
-  logger.info(`Server started on http://localhost:${PORT} (db=${DB_PATH}, seeded=${seeded})`);
+  logger.info(
+    `Server started on http://localhost:${PORT} (db=${DB_PATH}, seeded=${seeded}, ` +
+      `guestCheckout=${config.guestCheckout}, sessionTtlMinutes=${config.sessionTtlMinutes})`
+  );
 });
