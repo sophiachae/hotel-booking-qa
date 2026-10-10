@@ -10,7 +10,9 @@
     "test": "playwright test",
     "test:ui": "playwright test --project=ui",
     "test:api": "playwright test --project=api",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:watch": "playwright test --project=ui --headed --workers=1",
+    "test:debug-ui": "playwright test --ui"
   },
   "engines": {
     "node": ">=18"

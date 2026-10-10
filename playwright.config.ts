@@ -16,6 +16,8 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // 눈으로 볼 때: SLOWMO=500 npm run test:watch → 동작마다 0.5초 지연
+    launchOptions: { slowMo: Number(process.env.SLOWMO) || 0 },
   },
   projects: [
     {
