@@ -1,251 +1,137 @@
-# 미니 호텔 예약 웹앱 (Mini Hotel Booking)
+# 미니 호텔 예약 앱 QA 포트폴리오
 
-QA 포트폴리오용 **테스트 대상 애플리케이션**입니다.
-호텔 검색 → 객실 선택 → 예약 → 예약 조회/취소까지의 흐름을 갖춘 작은 웹앱으로,
-UI 자동화(Playwright/Selenium/Cypress), API 테스트(Postman/REST Assured/Jest+Supertest),
-DB 검증, 로그 분석 연습에 사용할 수 있습니다.
+> AI가 만든 테스트 케이스를 QA 관점에서 검토·보완하고, 수동 테스트와 Playwright 자동화로 실행해 결함 6건을 찾은 프로젝트
 
-> ⚠️ 이 앱은 QA 실습용 테스트 대상이며 의도적인 결함이 포함되어 있습니다. 발견한 결함은 [Issues](https://github.com/sophiachae/hotel-booking-qa/issues)에 정리했습니다.
+## 1. 프로젝트 소개
 
----
+- **테스트 대상:** 호텔 검색 → 객실 선택 → 예약 → 예약 조회·취소 흐름을 갖춘 미니 웹앱 (Node.js / Express / SQLite)
+  → [앱 명세 보기](docs/SPEC.md)
+- **목적**
+  - LLM이 명세만 보고 만든 TC를 실무에서 그대로 쓸 수 있는지 확인하고, 사람이 채워야 하는 영역을 실제 결과로 정리
+  - 수동 테스트와 UI·API 자동화를 함께 적용해 결함을 찾고 GitHub Issues로 관리
 
-## 1. 실행 방법
+## 2. 진행 과정
 
-**요구사항:** Node.js 18 이상 (권장 20/22 LTS)
+| 단계 | 한 일 | 결과 |
+|---|---|---|
+| 1. AI TC 생성 | 앱 명세를 LLM에 입력해 TC 생성 | 30건 |
+| 2. QA 리뷰·수정 | 모호한 표기, 개발자 관점 기대결과, 명세에 없는 조건을 찾아 재작성 (수정 전 원문은 엑셀에 보존) | 13건 수정 |
+| 3. 누락 TC 보완 | 화면 간 금액 일치, 기간 겹침 유형, 로그 개인정보, 더블 클릭·뒤로 가기 등 AI가 놓친 관점 추가 | 8건 추가 |
+| 4. 수동 실행 | 화면·로그(`app.log`)·DB를 함께 확인하며 실행, 결함은 재현 절차와 근거를 붙여 이슈 등록 | 결함 #1~#4, #6 |
+| 5. Playwright 자동화 | UI 8건 + API 18건 자동화. DB·로그 검증 포함, 알려진 결함 TC는 `test.fail()`로 표시 | 결함 #5 발견, #2 패턴 확장 |
+
+## 3. 결과
+
+### TC 출처별 실행 결과 (총 38건, 미실행 0건)
+
+| 출처 | 건수 | Pass | Fail | 확인필요 |
+|---|---:|---:|---:|---:|
+| AI (원문 그대로) | 17 | 15 | 2 | 0 |
+| AI수정 (QA가 재작성) | 13 | 12 | 1 | 0 |
+| QA추가 | 8 | 3 | 4 | 1 |
+| **합계** | **38** | **30** | **7** | **1** |
+
+- 확인필요 1건은 정책이 정의되지 않아 확인을 요청한 케이스입니다 (TC-33 → #4).
+- AI가 만든 30건 중 13건(43%)은 그대로 실행하기 어려워 QA가 고쳐 썼습니다.
+
+### 실행 방식
+
+| 방식 | 건수 | TC |
+|---|---:|---|
+| Playwright UI | 8 | TC-01, 11, 14, 17, 24, 32, 37, 38 |
+| Playwright API | 18 | TC-02, 03, 04, 08, 09, 10, 12, 13, 15, 16, 18, 19, 20, 21, 22, 23, 26, 29 |
+| 수동 | 12 | TC-05, 06, 07, 25, 27, 28, 30, 31, 33, 34, 35, 36 |
+
+자동화 26건 중 21건은 Pass, 5건(TC-14, 15, 23, 32, 37)은 알려진 결함 때문에 `test.fail()`로 표시했습니다.
+결함이 고쳐지면 Playwright가 "예상한 실패가 사라졌다"고 알려주므로, 회귀 테스트로 그대로 쓸 수 있습니다.
+
+전체 TC, AI 원문, 리뷰 메모는 [엑셀 파일](docs/mini_hotel_test_cases_v2.xlsx)에 있습니다 (시트: 테스트케이스 / AI 리뷰 요약 / 결함 목록 / 공통 표기).
+
+## 4. 발견 결함
+
+| # | 제목 | 유형 | 심각도 | 발견 경로 | 관련 TC |
+|---|---|---|---|---|---|
+| [#1](https://github.com/sophiachae/hotel-booking-qa/issues/1) | 화면 표시 금액과 저장 금액 불일치 (저장 금액이 1박 요금만큼 많음) | bug | critical | 수동 (자동화로 재현) | TC-14, 15, 31 |
+| [#2](https://github.com/sophiachae/hotel-booking-qa/issues/2) | 체크인이 기존 예약보다 앞서면 겹치는 기간이 허용되어 중복 예약 발생 | bug | critical | 수동 → 자동화로 패턴 확장 | TC-32, 37 |
+| [#3](https://github.com/sophiachae/hotel-booking-qa/issues/3) | 예약 API 로그에 이메일·전화번호·이름이 평문으로 기록됨 | bug | major | 수동 | TC-34 |
+| [#4](https://github.com/sophiachae/hotel-booking-qa/issues/4) | 이름은 영문 입력이 가능하나 전화번호는 국내 형식만 허용되어 해외 사용자 예약 불가 | enhancement | - | 수동 | TC-33 |
+| [#5](https://github.com/sophiachae/hotel-booking-qa/issues/5) | 가운데 자리가 3자리인 전화번호(010-123-4567)가 서버 검증을 통과해 예약됨 | bug | minor | 자동화 | TC-23 |
+| [#6](https://github.com/sophiachae/hotel-booking-qa/issues/6) | 예약 완료 후 뒤로 가기·새로고침 시 안내 없이 입력 화면이 남아 예약 실패처럼 보임 | enhancement | - | 수동 | TC-36 |
+
+## 5. 핵심 인사이트
+
+### 5-1. AI TC 리뷰: AI가 잘한 것과 사람이 채워야 한 것
+
+**AI가 잘한 것**
+- 명세에 적힌 경계값(체크인 당일, 30박, 0박)과 입력 규칙 TC를 잘 만들었고, 실제로 입력 규칙 결함 #5를 찾았습니다 (TC-23).
+- 명세가 모호한 부분은 가정을 명시했습니다 (TC-02의 최저가 기준).
+
+**사람이 채워야 한 것**
+- **여러 기능에 걸친 결함은 QA가 추가한 TC에서만 나왔습니다.** 화면 간 금액 일치(#1, TC-31), 기간 겹침(#2, TC-32), 로그 개인정보(#3, TC-34)가 그 예입니다.
+  - 금액 결함 #1은 AI TC-15도 API 응답의 `totalPrice`로 잡았습니다. 하지만 "고객이 화면마다 다른 금액을 본다"는 영향은 화면 간 비교 TC(TC-31)에서만 드러났습니다.
+- **명세를 그대로 따라가 API·개발자 관점으로 쏠렸습니다.** 생성 당시 UI 7건, API 23건이었습니다.
+- **내부 표기 때문에 바로 실행하기 어려웠습니다.** `D+30`, `객실 2`, `R1`, `data-testid` 같은 표기에서 리뷰 중 실제로 해석 혼동이 있었습니다.
+- **명세에 없는 조건을 기대결과로 넘겨짚었습니다.** TC-04·08·09는 `error.details`에 특정 키가 있어야 한다고 기대했지만, 명세에는 그런 조건이 없었습니다. 자동화 실행에서 Fail로 드러났고, 리뷰 후 결함이 아니라 TC 문제로 판단해 조건을 뺐습니다.
+
+### 5-2. 기간 겹침 4유형 패턴 분석 (#2)
+
+AI는 기간 겹침 중 "뒤쪽 겹침" 1가지만 만들었습니다. 나머지 3가지 유형을 추가해 같은 방식(예약 화면 URL로 직접 진입 → 서버 검증 확인)으로 비교했습니다.
+
+| TC | 유형 | 기존 예약 | 시도 기간 | 체크인 위치 | 결과 |
+|---|---|---|---|---|---|
+| TC-32 | 앞쪽 겹침 | 11/1 ~ 11/3 | 10/31 ~ 11/2 | 기존 예약 **이전** | ❌ 중복 예약 생성 |
+| TC-37 | 감싸기 | 11/1 ~ 11/3 | 10/31 ~ 11/4 | 기존 예약 **이전** | ❌ 중복 예약 생성 |
+| TC-38 | 포함 | 11/1 ~ 11/3 | 11/1 ~ 11/2 | 기존 예약 **안** | ✅ 409 차단 |
+| TC-17 | 뒤쪽 겹침 | 11/1 ~ 11/3 | 11/2 ~ 11/4 | 기존 예약 **안** | ✅ 409 차단 |
+
+- **패턴:** 체크인 날짜가 기존 예약보다 앞이면 겹쳐도 예약이 허용되고, 기존 예약 안에 있으면 차단됩니다.
+- 처음엔 TC-37을 별도 결함으로 볼 수도 있었지만, 4가지를 비교해 **같은 원인의 결함 하나**로 묶고 #2의 제목을 패턴에 맞게 바꿨습니다.
+- 객실 목록 화면은 4가지 유형 모두 "예약 불가"로 정상 표시했습니다. **화면만 검증했다면 놓쳤을 결함**입니다.
+
+### 5-3. 수동 테스트로만 찾은 #6
+
+TC-36(예약 완료 후 뒤로 가기·새로고침)은 **Pass**입니다. 재제출 2회 모두 서버가 409로 막았고 추가 예약도 없었습니다.
+자동화로 상태 코드와 DB만 확인했다면 여기서 끝났을 케이스입니다.
+
+직접 화면을 보니 사용자 입장에서 문제가 있었습니다.
+- 뒤로 가기를 하면 버튼이 "예약 처리 중..."에 멈춰 있습니다.
+- 새로고침 후 제출하면 "이미 예약된 객실입니다" 에러가 떠서, 방금 예약한 사용자가 **예약에 실패한 것으로 오해**할 수 있습니다.
+
+기능 결함은 아니지만 사용성 개선 제안(#6)으로 등록했습니다. 자동화는 정해 둔 기대결과를 반복해서 확인하는 데 강하고, 기대결과 밖의 사용자 경험은 사람이 직접 봐야 찾을 수 있었습니다.
+
+## 6. 테스트 실행 방법
+
+**요구사항:** Node.js 18 이상
 
 ```bash
 npm install
-npm start
+npx playwright install chromium   # 최초 1회
 ```
-
-브라우저에서 http://localhost:3000 접속.
 
 | 명령 | 설명 |
 |---|---|
-| `npm start` | 서버 실행. DB가 비어 있으면 샘플 데이터 자동 생성 |
-| `npm run reset` | DB 파일 삭제 (다음 `npm start` 때 샘플 데이터로 초기화) |
-| `PORT=4000 npm start` | 포트 변경 |
+| `npm test` | UI·API 전체 실행 (브라우저 창 없이) |
+| `npm run test:watch` | UI 테스트를 브라우저 창을 띄워 실행. `SLOWMO=700 npm run test:watch`처럼 쓰면 동작마다 0.7초씩 쉬어서 눈으로 따라가기 좋음 |
+| `npm run test:debug-ui` | Playwright UI 모드. 단계별 화면 스냅샷, 네트워크 요청·응답 확인 |
+| `npm run test:report` | 마지막 실행 결과 HTML 리포트 |
 
-환경 변수: `PORT`(기본 3000), `DB_PATH`(기본 `data/hotel.db`), `LOG_DIR`(기본 `logs`)
-
-> 테스트 전 깨끗한 상태가 필요하면: 서버 종료 → `npm run reset` → `npm start`
+- 테스트는 매 실행마다 **DB를 초기화한 전용 서버**(포트 3100, `data/e2e.db`, `logs/e2e/`)를 자동으로 띄웁니다. 수동 테스트용 서버(`npm start`, 포트 3000)의 데이터에는 영향이 없습니다.
+- 날짜는 하드코딩하지 않고 실행일 기준 "오늘+n일"로 계산하므로, 언제 실행해도 같은 결과가 나옵니다.
+- 테스트가 병렬로 실행되므로 TC마다 서로 다른 객실·기간을 사용해 데이터가 겹치지 않게 했습니다.
+- 앱을 직접 실행하는 방법은 [앱 명세](docs/SPEC.md#1-실행-방법)를 참고하세요.
 
 ### 폴더 구조
 
 ```
-mini-hotel/
-├─ server.js            # Express 앱 진입점, 에러 핸들러
-├─ src/
-│  ├─ db.js             # SQLite 스키마 + 샘플 데이터
-│  ├─ routes.js         # API 라우트
-│  ├─ utils.js          # 검증 유틸, 에러 클래스
-│  └─ logger.js         # logs/app.log 기록
-├─ public/              # 프론트엔드 (순수 HTML/JS)
-│  ├─ index.html        # 1. 호텔 검색
-│  ├─ results.html      # 2. 검색 결과
-│  ├─ hotel.html        # 2. 호텔 상세 / 객실 선택
-│  ├─ book.html         # 3. 예약 정보 입력
-│  ├─ complete.html     # 3. 예약 완료
-│  ├─ my.html           # 4. 내 예약 조회 / 취소
-│  ├─ app.js, style.css
-├─ scripts/reset-db.js
-├─ data/hotel.db        # (자동 생성)
-└─ logs/app.log         # (자동 생성)
+├─ README.md                 # QA 포트폴리오 소개 (이 문서)
+├─ docs/
+│  ├─ SPEC.md                # 앱 명세 (API, DB, 로그, data-testid)
+│  └─ mini_hotel_test_cases_v2.xlsx   # TC 38건, AI 리뷰 요약, 결함 목록
+├─ tests/
+│  ├─ ui/                    # Playwright UI 테스트 (검색, 상세, 예약, 기간 겹침)
+│  ├─ api/                   # Playwright API 테스트 (request 픽스처)
+│  └─ support/               # 날짜 헬퍼, API·DB 헬퍼, 테스트 데이터
+├─ playwright.config.ts
+├─ server.js, src/, public/  # 테스트 대상 앱 (결함 포함, 수정하지 않음)
+└─ scripts/reset-db.js
 ```
-
----
-
-## 2. 화면 흐름
-
-```
-[index] 호텔 검색 ─▶ [results] 검색 결과 ─▶ [hotel] 상세/객실 선택
-                                                   │
-[my] 내 예약 조회/취소 ◀─ [complete] 예약 완료 ◀─ [book] 예약 정보 입력
-```
-
-화면 간 상태는 URL 쿼리스트링으로 전달됩니다.
-예: `hotel.html?id=1&checkIn=2026-11-10&checkOut=2026-11-12&guests=2`
-
----
-
-## 3. API
-
-모든 응답은 JSON입니다. 에러 응답 형식:
-
-```json
-{ "error": { "code": "VALIDATION_ERROR", "message": "…", "details": { "email": "…" } } }
-```
-
-| 상태 | code | 상황 |
-|---|---|---|
-| 400 | `VALIDATION_ERROR` | 필수값 누락, 형식 오류, 날짜/인원 규칙 위반 |
-| 400 | `INVALID_JSON` | 요청 본문이 JSON이 아님 |
-| 404 | `NOT_FOUND` | 호텔/객실/예약 없음, 예약번호-이메일 불일치, 없는 API |
-| 409 | `ROOM_UNAVAILABLE` | 이미 예약된 날짜의 객실 |
-| 409 | `ALREADY_CANCELLED` | 이미 취소된 예약을 다시 취소 |
-| 409 | `CANCELLATION_CLOSED` | 체크인 당일 이후 취소 시도 |
-| 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
-
-### 공통 검증 규칙
-
-- 날짜: `YYYY-MM-DD`, 실제 존재하는 날짜
-- 체크인 ≥ 오늘, 체크아웃 > 체크인, 최대 30박
-- 인원(`guests`): 1~10 정수
-- 이름: 1~50자 / 이메일: 일반 이메일 형식 / 전화번호: `010-1234-5678` 또는 `01012345678`
-
-### GET `/api/hotels`
-
-검색 조건에 맞고 **해당 기간에 예약 가능한 객실이 1개 이상** 있는 호텔 목록.
-
-| 파라미터 | 필수 | 예 |
-|---|---|---|
-| `city` | O | `서울` |
-| `checkIn` | O | `2026-11-10` |
-| `checkOut` | O | `2026-11-12` |
-| `guests` | O | `2` |
-
-```json
-[{ "id": 1, "name": "서울 그랜드 호텔", "city": "서울", "address": "…", "rating": 4.6,
-   "description": "…", "minPrice": 120000, "availableRooms": 3 }]
-```
-결과가 없으면 `200 []`.
-
-### GET `/api/hotels/:id/rooms`
-
-호텔 정보와 객실 목록. 쿼리 `checkIn`, `checkOut`, `guests`(선택)를 주면 `available`이 계산됩니다.
-
-```json
-{ "hotel": { "id": 1, "name": "…", … },
-  "rooms": [{ "id": 1, "name": "스탠다드 더블", "capacity": 2, "pricePerNight": 120000, "available": true }] }
-```
-에러: `400`(id 형식/날짜 오류), `404`(호텔 없음)
-
-### POST `/api/reservations`
-
-```json
-{ "roomId": 1, "checkIn": "2026-11-10", "checkOut": "2026-11-12", "guests": 2,
-  "name": "홍길동", "email": "hong@test.com", "phone": "010-1234-5678" }
-```
-`201` 응답 (예약 객체):
-```json
-{ "id": "RSV-1A2B3C4D", "status": "CONFIRMED",
-  "hotel": { "id": 1, "name": "서울 그랜드 호텔", "city": "서울" },
-  "room": { "id": 1, "name": "스탠다드 더블", "pricePerNight": 120000 },
-  "checkIn": "2026-11-10", "checkOut": "2026-11-12", "nights": 2, "guests": 2,
-  "guestName": "홍길동", "email": "hong@test.com", "phone": "010-1234-5678",
-  "totalPrice": 240000, "createdAt": "2026-…Z", "cancelledAt": null }
-```
-에러: `400`(검증 실패, 수용 인원 초과), `404`(객실 없음), `409`(이미 예약된 객실)
-
-### GET `/api/reservations/:id?email=`
-
-예약번호 + 이메일(대소문자 무시)이 모두 일치해야 조회됩니다.
-에러: `400`(email 누락), `404`(없음 또는 이메일 불일치)
-
-### POST `/api/reservations/:id/cancel`
-
-본문: `{ "email": "hong@test.com" }` → `200` + 취소된 예약 객체(`status: "CANCELLED"`, `cancelledAt` 채워짐)
-에러: `400`(email 누락), `404`(없음/불일치), `409`(이미 취소, 체크인 당일 이후)
-
-### (부가) GET `/api/cities`
-
-검색 화면 드롭다운용 도시 목록. `["부산","서울","제주"]`
-
----
-
-## 4. DB 테이블 구조 (SQLite)
-
-### hotels
-| 컬럼 | 타입 | 설명 |
-|---|---|---|
-| id | INTEGER PK | 자동 증가 |
-| name | TEXT | 호텔명 |
-| city | TEXT | 도시 (서울/부산/제주) |
-| address | TEXT | 주소 |
-| rating | REAL | 평점 |
-| description | TEXT | 소개 |
-
-### rooms
-| 컬럼 | 타입 | 설명 |
-|---|---|---|
-| id | INTEGER PK | 자동 증가 |
-| hotel_id | INTEGER FK → hotels.id | |
-| name | TEXT | 객실명 |
-| capacity | INTEGER | 최대 인원 |
-| price_per_night | INTEGER | 1박 요금(원) |
-
-### reservations
-| 컬럼 | 타입 | 설명 |
-|---|---|---|
-| id | TEXT PK | 예약번호 `RSV-XXXXXXXX` |
-| room_id | INTEGER FK → rooms.id | |
-| guest_name | TEXT | 예약자 이름 |
-| email | TEXT | 이메일 |
-| phone | TEXT | 전화번호 |
-| check_in | TEXT | `YYYY-MM-DD` |
-| check_out | TEXT | `YYYY-MM-DD` |
-| guests | INTEGER | 인원 |
-| nights | INTEGER | 숙박일수 |
-| total_price | INTEGER | 총 결제 금액(원) |
-| status | TEXT | `CONFIRMED` / `CANCELLED` (CHECK 제약) |
-| created_at | TEXT | ISO 8601 (UTC) |
-| cancelled_at | TEXT NULL | 취소 시각 |
-
-예약 겹침 규칙: 같은 객실에서 `CONFIRMED` 예약끼리 숙박 기간이 하루라도 겹치면 안 됩니다.
-체크아웃 날짜 = 다음 손님의 체크인 날짜는 허용됩니다.
-
-### 샘플 데이터
-
-| 도시 | 호텔 (id) | 객실 (id: 이름 / 인원 / 1박 요금) |
-|---|---|---|
-| 서울 | 서울 그랜드 호텔 (1) | 1: 스탠다드 더블 / 2 / 120,000 · 2: 디럭스 트윈 / 3 / 160,000 · 3: 이그제큐티브 스위트 / 4 / 280,000 |
-| 서울 | 한강 리버뷰 호텔 (2) | 4: 스탠다드 더블 / 2 / 95,000 · 5: 패밀리 룸 / 4 / 150,000 |
-| 부산 | 해운대 오션 리조트 (3) | 6: 오션뷰 더블 / 2 / 140,000 · 7: 오션뷰 패밀리 / 4 / 210,000 · 8: 펜트하우스 / 6 / 450,000 |
-| 부산 | 광안 브릿지 스테이 (4) | 9: 스탠다드 더블 / 2 / 85,000 · 10: 디럭스 트리플 / 3 / 120,000 |
-| 제주 | 제주 포레스트 리조트 (5) | 11: 가든 더블 / 2 / 130,000 · 12: 포레스트 빌라 / 5 / 320,000 |
-| 제주 | 성산 선라이즈 호텔 (6) | 13: 스탠다드 더블 / 2 / 90,000 · 14: 오션뷰 트윈 / 3 / 125,000 · 15: 패밀리 스위트 / 4 / 170,000 |
-
-DB 직접 확인 예:
-```bash
-sqlite3 data/hotel.db "SELECT id, room_id, check_in, check_out, nights, total_price, status FROM reservations;"
-```
-
----
-
-## 5. 로그
-
-모든 `/api` 요청이 `logs/app.log`에 한 줄씩 기록됩니다. 4xx/5xx는 `ERROR`, 그 외는 `INFO`.
-500 에러는 스택 트레이스가 추가 줄로 기록됩니다.
-
-형식: `시간 [레벨] 메서드 경로 params={쿼리+본문} status=코드 result=요약 (소요시간)`
-
-```
-2026-11-01 10:00:01.123 [INFO] GET /api/hotels params={"city":"서울","checkIn":"2026-11-10","checkOut":"2026-11-12","guests":"2"} status=200 result=count=2 (3.1ms)
-2026-11-01 10:00:09.456 [INFO] POST /api/reservations params={"roomId":1,…} status=201 result=reservationId=RSV-1A2B3C4D status=CONFIRMED totalPrice=240000 (8.2ms)
-2026-11-01 10:00:12.789 [ERROR] POST /api/reservations params={"roomId":1,…} status=409 result=ROOM_UNAVAILABLE: 선택한 날짜에 이미 예약된 객실입니다. (1.4ms)
-```
-
----
-
-## 6. data-testid 목록
-
-공통 헤더: `nav-home`, `nav-search`, `nav-my-reservation`
-
-| 화면 | data-testid |
-|---|---|
-| 검색 (`index.html`) | `search-form`, `search-city`, `search-checkin`, `search-checkout`, `search-guests`, `search-submit`, `search-error` |
-| 결과 (`results.html`) | `results-summary`, `results-modify-search`, `results-loading`, `results-error`, `results-empty`, `hotel-list`, `hotel-card-{id}`, `hotel-name-{id}`, `hotel-min-price-{id}`, `hotel-available-rooms-{id}`, `hotel-detail-btn-{id}` |
-| 상세 (`hotel.html`) | `hotel-back-to-results`, `hotel-loading`, `hotel-error`, `hotel-detail`, `hotel-name`, `hotel-address`, `hotel-rating`, `hotel-description`, `hotel-stay-summary`, `room-list`, `room-card-{id}`, `room-name-{id}`, `room-capacity-{id}`, `room-price-{id}`, `room-total-{id}`, `room-select-btn-{id}` |
-| 예약 입력 (`book.html`) | `booking-loading`, `booking-error`, `booking-section`, `booking-summary`, `booking-hotel-name`, `booking-room-name`, `booking-dates`, `booking-nights`, `booking-guests`, `booking-price-per-night`, `booking-total`, `booking-form`, `guest-name`, `guest-email`, `guest-phone`, `guest-name-error`, `guest-email-error`, `guest-phone-error`, `booking-submit` |
-| 예약 완료 (`complete.html`) | `complete-message`, `complete-section`, `reservation-id`, `complete-details`, `complete-hotel-name`, `complete-room-name`, `complete-dates`, `complete-nights`, `complete-guests`, `complete-guest-name`, `complete-total`, `complete-go-my-reservation`, `complete-go-home` |
-| 내 예약 (`my.html`) | `lookup-form`, `lookup-id`, `lookup-email`, `lookup-submit`, `lookup-error`, `reservation-detail`, `reservation-detail-id`, `reservation-status`, `reservation-hotel-name`, `reservation-room-name`, `reservation-dates`, `reservation-nights`, `reservation-guests`, `reservation-guest-name`, `reservation-email`, `reservation-phone`, `reservation-created-at`, `reservation-cancelled-row`, `reservation-cancelled-at`, `reservation-total`, `cancel-btn`, `cancel-confirm`, `cancel-confirm-yes`, `cancel-confirm-no`, `cancel-result`, `cancel-error` |
-
-`reservation-status`는 화면에 한글("예약 확정"/"취소됨")로 표시되고, `data-status` 속성에 `CONFIRMED`/`CANCELLED` 원본 값이 들어 있습니다.
-
-```js
-// Playwright 예시
-await page.getByTestId('search-city').selectOption('서울');
-await expect(page.getByTestId('reservation-status')).toHaveAttribute('data-status', 'CANCELLED');
-```
-
-예약 취소 확인은 브라우저 `confirm()` 대신 페이지 내 패널(`cancel-confirm`)을 사용하므로 dialog 처리가 필요 없습니다.
