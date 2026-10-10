@@ -3,6 +3,7 @@ export const ISSUES = {
   PRICE_MISMATCH: 'https://github.com/sophiachae/hotel-booking-qa/issues/1',
   FRONT_OVERLAP: 'https://github.com/sophiachae/hotel-booking-qa/issues/2',
   LOG_PII: 'https://github.com/sophiachae/hotel-booking-qa/issues/3',
+  PHONE_FORMAT: 'https://github.com/sophiachae/hotel-booking-qa/issues/5',
 } as const;
 
 /** 테스트용 예약자 정보 (실제 개인정보 사용 금지) */
