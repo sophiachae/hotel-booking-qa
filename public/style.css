@@ -43,6 +43,20 @@ a { color: var(--brand); }
 .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.3px; }
 .nav a { font-size: 14px; opacity: 0.9; margin-left: 16px; }
 .nav a:hover { opacity: 1; text-decoration: underline; }
+.nav-user { font-size: 14px; margin-left: 16px; font-weight: 600; }
+
+.auth-box { max-width: 440px; margin: 0 auto; }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 18px 0; }
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.btn.social { width: 100%; margin-bottom: 8px; background: #fff; color: var(--text); border: 1px solid var(--line); }
+.btn.social:hover { background: #f4f4f4; }
+.btn.social.kakao { background: #f7e04b; border-color: #f7e04b; color: #2b2400; }
+.btn.social.kakao:hover { background: #efd52f; }
+.notice { padding: 12px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 14px; background: #eef5f6; color: var(--brand-dark); }
+input[readonly] { background: #f3f3f1; color: var(--muted); }
+.res-item { cursor: pointer; }
+.res-item:hover { border-color: var(--brand); }
+.hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
 main {
   max-width: 880px;

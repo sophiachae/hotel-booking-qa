@@ -77,4 +77,66 @@ const App = {
   $(testId) {
     return document.querySelector(`[data-testid="${testId}"]`);
   },
+
+  me() {
+    if (!App._mePromise) {
+      App._mePromise = App.api('/api/auth/me')
+        .then((data) => data.user)
+        .catch(() => null);
+    }
+    return App._mePromise;
+  },
+
+  config() {
+    if (!App._configPromise) {
+      App._configPromise = App.api('/api/config').catch(() => ({ guestCheckout: true, loginProviders: ['email'] }));
+    }
+    return App._configPromise;
+  },
+
+  currentPath() {
+    return location.pathname + location.search;
+  },
+
+  loginUrl(returnTo = App.currentPath()) {
+    return 'login.html?' + App.query({ returnTo });
+  },
+
+  safeReturnTo(value) {
+    const v = String(value || '');
+    if (!v.startsWith('/') || v.startsWith('//') || v.includes('\\')) return '/index.html';
+    return v;
+  },
+
+  async logout() {
+    try {
+      await App.api('/api/auth/logout', { method: 'POST' });
+    } finally {
+      location.href = 'index.html';
+    }
+  },
+
+  async renderNav() {
+    const nav = document.querySelector('.nav');
+    if (!nav) return;
+    const slot = document.createElement('span');
+    slot.className = 'nav-auth';
+    slot.dataset.testid = 'nav-auth';
+    nav.appendChild(slot);
+
+    const me = await App.me();
+    if (me) {
+      slot.innerHTML =
+        `<span class="nav-user" data-testid="nav-user-name">${App.esc(me.name)}님</span>` +
+        `<a href="#" data-testid="nav-logout">로그아웃</a>`;
+      App.$('nav-logout').addEventListener('click', (e) => {
+        e.preventDefault();
+        App.logout();
+      });
+    } else if (!/\/(login|signup)\.html$/.test(location.pathname)) {
+      slot.innerHTML = `<a href="${App.esc(App.loginUrl())}" data-testid="nav-login">로그인</a>`;
+    }
+  },
 };
+
+document.addEventListener('DOMContentLoaded', () => App.renderNav());

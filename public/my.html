@@ -19,7 +19,20 @@
 
   <main>
     <h1>내 예약 조회</h1>
-    <p class="sub">예약번호와 예약 시 입력한 이메일을 입력해 주세요.</p>
+
+    <section class="hidden" data-testid="my-reservations-section">
+      <h2>회원 예약 내역</h2>
+      <p class="loading" data-testid="my-reservations-loading">불러오는 중...</p>
+      <div class="card empty hidden" data-testid="my-reservations-empty">아직 회원으로 예약한 내역이 없어요.</div>
+      <div data-testid="my-reservation-list"></div>
+    </section>
+
+    <div class="notice hidden" data-testid="my-login-hint">
+      회원이신가요? <a href="login.html" data-testid="my-login-link">로그인</a>하면 예약 내역을 한 번에 볼 수 있어요.
+    </div>
+
+    <h2 data-testid="lookup-title">예약번호로 조회</h2>
+    <p class="sub">예약번호와 예약 시 입력한 이메일을 입력해 주세요. 비회원 예약도 여기서 조회할 수 있어요.</p>
 
     <form class="card" id="lookup-form" data-testid="lookup-form" novalidate>
       <div class="alert error hidden" data-testid="lookup-error" role="alert"></div>
@@ -76,7 +89,8 @@
 
   <script src="app.js"></script>
   <script>
-    (() => {
+    (async () => {
+      const me = await App.me();
       const idInput = App.$('lookup-id');
       const emailInput = App.$('lookup-email');
       const lookupError = App.$('lookup-error');
@@ -86,6 +100,7 @@
       const cancelResult = App.$('cancel-result');
       const cancelError = App.$('cancel-error');
       let current = null;
+      let currentEmail = '';
 
       const fmtDateTime = (iso) => (iso ? new Date(iso).toLocaleString('ko-KR') : '-');
 
@@ -123,20 +138,61 @@
         else App.hide(cancelBtn);
       }
 
+      async function open(id, email) {
+        App.hide(lookupError);
+        App.hide(cancelResult);
+        App.hide(cancelError);
+        const r = await App.api(`/api/reservations/${encodeURIComponent(id)}?` + App.query({ email }));
+        currentEmail = email;
+        render(r);
+        detail.scrollIntoView({ block: 'start' });
+      }
+
+      async function loadMyReservations() {
+        if (!me) return;
+        const list = App.$('my-reservation-list');
+        try {
+          const items = await App.api('/api/me/reservations');
+          App.hide(App.$('my-reservations-loading'));
+          if (items.length === 0) {
+            App.show(App.$('my-reservations-empty'));
+            list.innerHTML = '';
+            return;
+          }
+          App.hide(App.$('my-reservations-empty'));
+          list.innerHTML = items.map((r) => `
+            <div class="card list-item res-item" data-testid="my-reservation-item-${App.esc(r.id)}" data-id="${App.esc(r.id)}" data-status="${r.status}">
+              <div>
+                <h2 style="margin-bottom:4px">${App.esc(r.hotel.name)} · ${App.esc(r.room.name)}</h2>
+                <div class="meta">${App.esc(r.id)} · ${r.checkIn} ~ ${r.checkOut} (${r.nights}박)</div>
+              </div>
+              <div style="text-align:right">
+                <span class="badge ${r.status === 'CONFIRMED' ? 'confirmed' : 'cancelled'}">${r.status === 'CONFIRMED' ? '예약 확정' : '취소됨'}</span>
+                <div class="price" style="margin-top:6px">${App.won(r.totalPrice)}</div>
+              </div>
+            </div>`).join('');
+          list.querySelectorAll('.res-item').forEach((el) => {
+            el.addEventListener('click', () => open(el.dataset.id, '').catch((e) => App.show(lookupError, e.message)));
+          });
+        } catch (e) {
+          App.hide(App.$('my-reservations-loading'));
+          App.show(lookupError, e.message);
+        }
+      }
+
       async function lookup() {
         App.hide(lookupError);
         App.hide(cancelResult);
         App.hide(cancelError);
         const id = idInput.value.trim();
         const email = emailInput.value.trim();
-        if (!id || !email) {
+        if (!id || (!email && !me)) {
           App.show(lookupError, '예약번호와 이메일을 모두 입력해 주세요.');
           App.hide(detail);
           return;
         }
         try {
-          const r = await App.api(`/api/reservations/${encodeURIComponent(id)}?` + App.query({ email }));
-          render(r);
+          await open(id, email);
         } catch (e) {
           App.hide(detail);
           App.show(lookupError, e.message);
@@ -161,9 +217,10 @@
         try {
           const r = await App.api(`/api/reservations/${encodeURIComponent(current.id)}/cancel`, {
             method: 'POST',
-            body: JSON.stringify({ email: emailInput.value.trim() }),
+            body: JSON.stringify(currentEmail ? { email: currentEmail } : {}),
           });
           render(r);
+          loadMyReservations();
           App.show(cancelResult, '예약이 취소되었습니다.');
         } catch (e) {
           App.hide(confirmBox);
@@ -173,9 +230,17 @@
         }
       });
 
+      if (me) {
+        App.show(App.$('my-reservations-section'));
+        loadMyReservations();
+      } else {
+        App.$('my-login-link').href = App.loginUrl();
+        App.show(App.$('my-login-hint'));
+      }
+
       idInput.value = App.param('id') || '';
       emailInput.value = App.param('email') || '';
-      if (idInput.value && emailInput.value) lookup();
+      if (idInput.value && (emailInput.value || me)) lookup();
     })();
   </script>
 </body>

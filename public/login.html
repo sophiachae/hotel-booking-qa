@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 로그인</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-box">
+      <h1>로그인</h1>
+      <p class="sub">회원으로 로그인하면 예약 내역을 한 번에 확인할 수 있어요.</p>
+
+      <form class="card" id="login-form" data-testid="login-form" novalidate>
+        <div class="alert error hidden" data-testid="login-error" role="alert"></div>
+        <div class="field">
+          <label for="email">이메일</label>
+          <input id="email" type="email" autocomplete="username" data-testid="login-email">
+          <div class="field-error" data-testid="login-email-error"></div>
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input id="password" type="password" autocomplete="current-password" data-testid="login-password">
+          <div class="field-error" data-testid="login-password-error"></div>
+        </div>
+        <button type="submit" class="btn block" data-testid="login-submit">이메일로 로그인</button>
+
+        <div class="divider">또는</div>
+
+        <a class="btn social kakao" href="#" data-testid="login-kakao">카카오로 로그인</a>
+        <a class="btn social" href="#" data-testid="login-google">구글로 로그인</a>
+
+        <p class="sub" style="margin:14px 0 0; text-align:center">
+          아직 회원이 아니신가요? <a href="signup.html" data-testid="login-signup-link">회원가입</a>
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const returnTo = App.safeReturnTo(App.param('returnTo') || '/index.html');
+      const errorBox = App.$('login-error');
+      const email = App.$('login-email');
+      const password = App.$('login-password');
+      const submit = App.$('login-submit');
+
+      if (await App.me()) {
+        location.replace(returnTo);
+        return;
+      }
+
+      const oauthStart = (provider) => `/api/auth/oauth/${provider}/start?` + App.query({ returnTo });
+      App.$('login-kakao').href = oauthStart('kakao');
+      App.$('login-google').href = oauthStart('google');
+      App.$('login-signup-link').href = 'signup.html?' + App.query({ returnTo });
+
+      const PROVIDER_LABELS = { EMAIL: '이메일', KAKAO: '카카오', GOOGLE: '구글' };
+      const OAUTH_ERRORS = {
+        OAUTH_CANCELLED: '소셜 로그인이 취소되었습니다.',
+        INVALID_STATE: '로그인 요청이 만료되었거나 올바르지 않습니다. 다시 시도해 주세요.',
+        INVALID_CODE: '인증 코드가 만료되었거나 이미 사용되었습니다. 다시 시도해 주세요.',
+        EMAIL_CONSENT_REQUIRED: '이메일 제공에 동의해야 가입할 수 있습니다.',
+        ACCOUNT_EXISTS: '이미 다른 방법으로 가입된 이메일입니다.',
+      };
+      const errorCode = App.param('error');
+      if (errorCode) {
+        let message = OAUTH_ERRORS[errorCode] || '로그인에 실패했습니다.';
+        const provider = App.param('provider');
+        if (errorCode === 'ACCOUNT_EXISTS' && PROVIDER_LABELS[provider]) {
+          message = `이미 ${PROVIDER_LABELS[provider]} 계정으로 가입된 이메일입니다. ${PROVIDER_LABELS[provider]}로 로그인해 주세요.`;
+        }
+        errorBox.dataset.code = errorCode;
+        App.show(errorBox, message);
+      }
+
+      function setFieldError(key, message) {
+        const input = key === 'email' ? email : password;
+        input.classList.toggle('invalid', Boolean(message));
+        App.$(`login-${key}-error`).textContent = message || '';
+      }
+      [email, password].forEach((el) => el.addEventListener('input', () => setFieldError(el === email ? 'email' : 'password', '')));
+
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        App.hide(errorBox);
+        delete errorBox.dataset.code;
+        setFieldError('email', email.value.trim() ? '' : '이메일을 입력해 주세요.');
+        setFieldError('password', password.value ? '' : '비밀번호를 입력해 주세요.');
+        if (!email.value.trim() || !password.value) return;
+
+        submit.disabled = true;
+        try {
+          await App.api('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email: email.value.trim(), password: password.value }),
+          });
+          location.href = returnTo;
+        } catch (err) {
+          errorBox.dataset.code = err.code || '';
+          App.show(errorBox, err.message);
+          submit.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
