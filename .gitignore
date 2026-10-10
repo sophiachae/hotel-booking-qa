@@ -4,3 +4,6 @@ data/
 *.db
 BUGS_SPOILER.md
 .DS_Store
+test-results/
+playwright-report/
+blob-report/
