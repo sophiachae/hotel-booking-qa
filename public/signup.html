@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니 호텔 | 회원가입</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="inner">
+      <a class="logo" href="index.html" data-testid="nav-home">미니 호텔</a>
+      <nav class="nav">
+        <a href="index.html" data-testid="nav-search">호텔 검색</a>
+        <a href="my.html" data-testid="nav-my-reservation">내 예약 조회</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="auth-box">
+      <h1>회원가입</h1>
+      <p class="sub">이메일로 가입하거나, 로그인 화면에서 카카오·구글로 바로 시작할 수 있어요.</p>
+
+      <form class="card" id="signup-form" data-testid="signup-form" novalidate>
+        <div class="alert error hidden" data-testid="signup-error" role="alert"></div>
+        <div class="field">
+          <label for="name">이름</label>
+          <input id="name" maxlength="50" autocomplete="name" data-testid="signup-name">
+          <div class="field-error" data-testid="signup-name-error"></div>
+        </div>
+        <div class="field">
+          <label for="email">이메일</label>
+          <input id="email" type="email" autocomplete="email" data-testid="signup-email">
+          <div class="field-error" data-testid="signup-email-error"></div>
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input id="password" type="password" autocomplete="new-password" data-testid="signup-password">
+          <div class="hint">영문과 숫자를 포함한 8~64자</div>
+          <div class="field-error" data-testid="signup-password-error"></div>
+        </div>
+        <div class="field">
+          <label for="passwordConfirm">비밀번호 확인</label>
+          <input id="passwordConfirm" type="password" autocomplete="new-password" data-testid="signup-password-confirm">
+          <div class="field-error" data-testid="signup-password-confirm-error"></div>
+        </div>
+        <div class="field">
+          <label for="phone">전화번호 (선택)</label>
+          <input id="phone" type="tel" placeholder="010-1234-5678" autocomplete="tel" data-testid="signup-phone">
+          <div class="field-error" data-testid="signup-phone-error"></div>
+        </div>
+        <button type="submit" class="btn block" data-testid="signup-submit">가입하기</button>
+        <p class="sub" style="margin:14px 0 0; text-align:center">
+          이미 회원이신가요? <a href="login.html" data-testid="signup-login-link">로그인</a>
+        </p>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    (async () => {
+      const returnTo = App.safeReturnTo(App.param('returnTo') || '/index.html');
+      if (await App.me()) {
+        location.replace(returnTo);
+        return;
+      }
+      App.$('signup-login-link').href = App.loginUrl(returnTo);
+
+      const errorBox = App.$('signup-error');
+      const submit = App.$('signup-submit');
+      const fields = {
+        name: App.$('signup-name'),
+        email: App.$('signup-email'),
+        password: App.$('signup-password'),
+        'password-confirm': App.$('signup-password-confirm'),
+        phone: App.$('signup-phone'),
+      };
+
+      function setFieldError(key, message) {
+        fields[key].classList.toggle('invalid', Boolean(message));
+        App.$(`signup-${key}-error`).textContent = message || '';
+      }
+      Object.keys(fields).forEach((k) => fields[k].addEventListener('input', () => setFieldError(k, '')));
+
+      function validate() {
+        const v = (k) => fields[k].value;
+        const errors = {};
+        if (!v('name').trim()) errors.name = '이름을 입력해 주세요.';
+        if (!v('email').trim()) errors.email = '이메일을 입력해 주세요.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v('email').trim())) errors.email = '이메일 형식이 올바르지 않습니다.';
+        if (!v('password')) errors.password = '비밀번호를 입력해 주세요.';
+        else if (!/^(?=.*[A-Za-z])(?=.*\d).{8,64}$/.test(v('password'))) errors.password = '비밀번호는 영문과 숫자를 포함한 8~64자여야 합니다.';
+        if (v('password') !== v('password-confirm')) errors['password-confirm'] = '비밀번호가 일치하지 않습니다.';
+        if (v('phone').trim() && !/^01[016789]-?\d{3,4}-?\d{4}$/.test(v('phone').trim())) {
+          errors.phone = '전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)';
+        }
+        Object.keys(fields).forEach((k) => setFieldError(k, errors[k]));
+        return Object.keys(errors).length === 0;
+      }
+
+      document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        App.hide(errorBox);
+        if (!validate()) return;
+
+        submit.disabled = true;
+        try {
+          await App.api('/api/auth/signup', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: fields.name.value.trim(),
+              email: fields.email.value.trim(),
+              password: fields.password.value,
+              phone: fields.phone.value.trim(),
+            }),
+          });
+          location.href = returnTo;
+        } catch (err) {
+          if (err.details) Object.entries(err.details).forEach(([k, msg]) => fields[k] && setFieldError(k, msg));
+          errorBox.dataset.code = err.code || '';
+          App.show(errorBox, err.message);
+          submit.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

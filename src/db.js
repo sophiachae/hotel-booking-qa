@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
+const { hashPassword } = require('./password');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'hotel.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
@@ -27,9 +28,29 @@ db.exec(`
     price_per_night INTEGER NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    email            TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash    TEXT,
+    name             TEXT    NOT NULL,
+    phone            TEXT,
+    provider         TEXT    NOT NULL CHECK (provider IN ('EMAIL', 'KAKAO', 'GOOGLE')),
+    provider_user_id TEXT,
+    created_at       TEXT    NOT NULL,
+    UNIQUE (provider, provider_user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT    PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    created_at TEXT    NOT NULL,
+    expires_at TEXT    NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS reservations (
     id           TEXT    PRIMARY KEY,
     room_id      INTEGER NOT NULL REFERENCES rooms(id),
+    user_id      INTEGER REFERENCES users(id),
     guest_name   TEXT    NOT NULL,
     email        TEXT    NOT NULL,
     phone        TEXT    NOT NULL,
@@ -45,7 +66,19 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_rooms_hotel ON rooms(hotel_id);
   CREATE INDEX IF NOT EXISTS idx_reservations_room ON reservations(room_id, status);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
+
+const reservationColumns = db.prepare('PRAGMA table_info(reservations)').all().map((c) => c.name);
+if (!reservationColumns.includes('user_id')) {
+  db.exec('ALTER TABLE reservations ADD COLUMN user_id INTEGER REFERENCES users(id)');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_reservations_user ON reservations(user_id)');
+
+const SEED_USERS = [
+  { email: 'test@minihotel.test', password: 'Test1234', name: '테스트회원', phone: '010-1111-2222' },
+  { email: 'test2@minihotel.test', password: 'Test1234', name: '두번째회원', phone: '010-3333-4444' },
+];
 
 const SEED = [
   {
@@ -101,7 +134,22 @@ const SEED = [
   },
 ];
 
+function seedUsersIfEmpty() {
+  const { count } = db.prepare('SELECT COUNT(*) AS count FROM users').get();
+  if (count > 0) return;
+  const insertUser = db.prepare(
+    `INSERT INTO users (email, password_hash, name, phone, provider, created_at)
+     VALUES (?, ?, ?, ?, 'EMAIL', ?)`
+  );
+  db.transaction(() => {
+    for (const s of SEED_USERS) {
+      insertUser.run(s.email, hashPassword(s.password), s.name, s.phone, new Date().toISOString());
+    }
+  })();
+}
+
 function seedIfEmpty() {
+  seedUsersIfEmpty();
   const { count } = db.prepare('SELECT COUNT(*) AS count FROM hotels').get();
   if (count > 0) return false;
 
