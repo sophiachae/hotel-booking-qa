@@ -15,7 +15,7 @@
     "test:debug-ui": "playwright test --ui"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
