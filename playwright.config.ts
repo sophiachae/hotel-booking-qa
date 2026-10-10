@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_DB_PATH, E2E_LOG_DIR } from './tests/support/env';
 
 // 수동 테스트용 서버(3000, data/hotel.db)와 겹치지 않도록 포트·DB·로그를 분리한다.
 const PORT = Number(process.env.E2E_PORT) || 3100;
@@ -36,8 +37,8 @@ export default defineConfig({
     timeout: 30_000,
     env: {
       PORT: String(PORT),
-      DB_PATH: 'data/e2e.db',
-      LOG_DIR: 'logs/e2e',
+      DB_PATH: E2E_DB_PATH,
+      LOG_DIR: E2E_LOG_DIR,
     },
   },
 });
