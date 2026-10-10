@@ -44,3 +44,30 @@
   - TC-04·08·09: `error.details`에 필드 키(`guests`, `checkIn`, `city`) 존재 검증 복구
   - TC-09: 로그 검색을 v1.1 형식(`user=` 포함)에 맞추고, 줄 전체가 아닌 `params={...}` 부분으로 city 누락 여부 판단
 - 결과: **26건 모두 기대대로** (Pass 21, 알려진 결함 `test.fail()` 5)
+
+## 3차: v1.1 신규 TC 자동화 실행 (2026-10-10)
+
+- 테스트 환경: 서버 3개 (기본 3100 / 회원 전용 `GUEST_CHECKOUT=off` 3101 / 세션 1분 `SESSION_TTL_MINUTES=1` 3102)
+- 전체 실행: **54건 모두 기대대로** (기존 26 + 신규 28, 알려진 결함 `test.fail()` 9건 포함, 약 75초)
+
+### v1.1 신규 TC 결과 (TC-39~68, 30건)
+
+| 결과 | 건수 | TC |
+|---|---:|---|
+| Pass | 23 | TC-39~59, 61, 66 |
+| Fail | 4 | TC-60(#3 재현), TC-64(#8), TC-65(#7), TC-68(#10) |
+| 확인필요 | 3 | TC-62, 63 (탐색 테스트, 정책 확인), TC-67(#9, 1회 측정) |
+
+### v1.1에서 새로 등록한 이슈
+
+| # | 내용 | 유형 | 심각도 | 발견 경로 | TC |
+|---|---|---|---|---|---|
+| [#7](https://github.com/sophiachae/hotel-booking-qa/issues/7) | 서버가 회원 예약 이메일을 계정 이메일로 고정하지 않음 (UI 우회) | bug | major | 자동화 | TC-65 |
+| [#8](https://github.com/sophiachae/hotel-booking-qa/issues/8) | 입력 중 세션 만료 시 안내 없이 비회원 예약으로 저장 | bug (needs-spec) | major | 자동화 | TC-64 |
+| [#9](https://github.com/sophiachae/hotel-booking-qa/issues/9) | 로그인 실패 횟수 제한 없음 | enhancement (needs-spec) | - | 자동화(1회 측정) | TC-67 |
+| [#10](https://github.com/sophiachae/hotel-booking-qa/issues/10) | 취소(error) 콜백에서 state 미검증 | bug | minor | 수동 탐색 | TC-68 |
+
+### 참고
+
+- TC-66(로그아웃 후 뒤로 가기)은 자동화(테스트용 Chromium)에서 Pass. 실제 Chrome에서는 화면 복원 방식이 다를 수 있어 수동 확인 권장
+- 자동화 중 테스트 코드 문제 2건을 수정함 (기대결과 변경 없음): 완료 화면 이동 후 응답 본문 읽기(TC-52·54·64), 소셜 로그인 버튼 링크가 채워지기 전 클릭(TC-47~53)
