@@ -1,5 +1,10 @@
 # 미니 호텔 예약 앱 QA 포트폴리오
 
+[![Playwright Tests](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/playwright.yml/badge.svg?branch=main)](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/playwright.yml)
+[![Test Report](https://img.shields.io/badge/Playwright-%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EB%A6%AC%ED%8F%AC%ED%8A%B8-2EAD33?logo=playwright)](https://sophiachae.github.io/hotel-booking-qa/)
+
+📊 **최신 테스트 리포트:** https://sophiachae.github.io/hotel-booking-qa/ (main에 push할 때마다 GitHub Actions가 전체 테스트를 실행하고 갱신)
+
 > AI가 만든 테스트 케이스를 QA 관점에서 검토·보완하고, 수동 테스트와 Playwright 자동화로 실행해 결함 6건을 찾은 프로젝트
 
 **테스트 대상 앱은 Claude로 만든 실습용 앱이며, 의도적으로 결함이 심어져 있습니다.** 앱 코드는 테스트 대상이므로 수정하지 않았습니다.
@@ -137,12 +142,14 @@ npx playwright install chromium   # 최초 1회
 - 테스트는 매 실행마다 **DB를 초기화한 전용 서버**(포트 3100, `data/e2e.db`, `logs/e2e/`)를 자동으로 띄웁니다. 수동 테스트용 서버(`npm start`, 포트 3000)의 데이터에는 영향이 없습니다.
 - 날짜는 하드코딩하지 않고 실행일 기준 "오늘+n일"로 계산하므로, 언제 실행해도 같은 결과가 나옵니다.
 - 테스트가 병렬로 실행되므로 TC마다 서로 다른 객실·기간을 사용해 데이터가 겹치지 않게 했습니다.
+- **CI:** main에 push하면 GitHub Actions([워크플로](.github/workflows/playwright.yml))가 같은 테스트를 실행하고, HTML 리포트를 [GitHub Pages](https://sophiachae.github.io/hotel-booking-qa/)에 올립니다. 알려진 결함 5건은 `test.fail()`로 표시되어 있어, 배지가 초록색이면 "새로운 실패 없음"을 뜻합니다.
 - 앱을 직접 실행하는 방법은 [앱 명세](docs/SPEC.md#1-실행-방법)를 참고하세요.
 
 ### 폴더 구조
 
 ```
 ├─ README.md                 # QA 포트폴리오 소개 (이 문서)
+├─ .github/workflows/        # GitHub Actions: push마다 테스트 실행, 리포트를 Pages에 배포
 ├─ docs/
 │  ├─ SPEC.md                # 앱 명세 (API, DB, 로그, data-testid)
 │  └─ mini_hotel_test_cases_v2.xlsx   # TC 38건, AI 리뷰 요약, 결함 목록
@@ -158,4 +165,5 @@ npx playwright install chromium   # 최초 1회
 ## 8. 다음 계획
 
 - **v1.1 로그인 기능 추가 후 회귀 테스트:** 기존 자동화 26건으로 회귀를 확인하고, 로그인 TC를 같은 방식(AI 초안 → QA 리뷰·보완 → 실행)으로 추가
+- **TC-33 정책 확인 대기:** 해외 전화번호 허용 여부가 정해지면 TC-33 기대결과를 확정하고 재실행 ([#4](https://github.com/sophiachae/hotel-booking-qa/issues/4))
 - **v1.2 이벤트 트래킹 QA:** 검색·객실 선택·예약 완료 등 주요 사용자 행동의 이벤트가 올바른 시점과 값으로 기록되는지 검증
