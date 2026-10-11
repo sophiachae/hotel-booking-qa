@@ -66,8 +66,37 @@
 | [#8](https://github.com/sophiachae/hotel-booking-qa/issues/8) | 입력 중 세션 만료 시 안내 없이 비회원 예약으로 저장 | bug (needs-spec) | major | 자동화 | TC-64 |
 | [#9](https://github.com/sophiachae/hotel-booking-qa/issues/9) | 로그인 실패 횟수 제한 없음 | enhancement (needs-spec) | - | 자동화(1회 측정) | TC-67 |
 | [#10](https://github.com/sophiachae/hotel-booking-qa/issues/10) | 취소(error) 콜백에서 state 미검증 | bug | minor | 수동 탐색 | TC-68 |
+| [#12](https://github.com/sophiachae/hotel-booking-qa/issues/12) | 로그아웃 후 뒤로 가기 시 캐시된 회원 화면에 개인정보 노출 (4차) | enhancement | - | 수동 | TC-66 |
 
 ### 참고
 
-- TC-66(로그아웃 후 뒤로 가기)은 자동화(테스트용 Chromium)에서 Pass. 실제 Chrome에서는 화면 복원 방식이 다를 수 있어 수동 확인 권장
+- TC-66(로그아웃 후 뒤로 가기)은 자동화(테스트용 Chromium)에서 Pass. 실제 Chrome 결과는 4차 참고
 - 자동화 중 테스트 코드 문제 2건을 수정함 (기대결과 변경 없음): 완료 화면 이동 후 응답 본문 읽기(TC-52·54·64), 소셜 로그인 버튼 링크가 채워지기 전 클릭(TC-47~53)
+
+## 4차: v1.1 머지 후 실제 Chrome 수동 확인 (2026-10-11)
+
+자동화는 테스트용 Chromium에서 실행됩니다. 그래서 세션 만료와 뒤로 가기 화면 복원처럼 브라우저 동작에 따라 결과가 달라질 수 있는 2건을 실제 Chrome에서 직접 확인했습니다.
+
+| TC | 실제 Chrome 결과 | 판정 | 이슈 |
+|---|---|---|---|
+| TC-64 | 자동화와 같은 결과 재현 (RSV-3FCED205) | Fail | [#8](https://github.com/sophiachae/hotel-booking-qa/issues/8) 재현 코멘트 추가 |
+| TC-66 | 기대결과는 충족. 캐시 화면에 개인정보 노출 | Pass | [#12](https://github.com/sophiachae/hotel-booking-qa/issues/12) 개선 제안 등록 |
+
+### TC-64: 예약 입력 중 세션 만료 (`SESSION_TTL_MINUTES=1`)
+
+- 화면: 만료 안내 없이 "예약이 완료되었습니다", 헤더가 로그인 버튼으로 바뀜, 완료 화면에 비회원 문구
+- 로그: 예약 요청 `user=-` (로그인 10:32:56, 제출 10:34:56), DB `user_id = null`
+- 같은 카카오 계정으로 재로그인 → 회원 예약 내역에 "아직 회원으로 예약한 내역이 없어요" (`GET /api/me/reservations` → `count=0`)
+
+### TC-66: 로그아웃 후 뒤로 가기
+
+- 로그아웃(10:39:40) 후 뒤로 가기: 브라우저 캐시로 이름·이메일·전화번호·예약 내용·금액이 그대로 보임 (서버 요청 없음)
+- 그 화면에서 예약 취소: `POST /api/reservations/{id}/cancel user=-` → 400 `VALIDATION_ERROR` "email은 필수입니다" (서버는 정상 차단)
+- 새로고침: 비로그인 화면으로 바뀜
+- 판정: 기대결과("보이더라도 새로고침·조작 시 비로그인 상태로 처리")를 충족하므로 **Pass**
+- 개선 제안 #12 (enhancement, #6과 같은 계열)
+  - 공용 PC에서 캐시 화면으로 개인정보가 노출됩니다.
+  - 노출된 예약번호+이메일로 비로그인 조회·취소가 될 수 있습니다. TC-62에서 같은 조건으로 조회·취소되는 것을 확인했고, 이번에 이어서 직접 테스트하지는 않았습니다.
+  - 취소 실패 문구가 로그인 만료를 알려 주지 않습니다.
+
+자동화 Chromium에서는 보이지 않던 캐시 화면이 실제 Chrome에서는 보였습니다. 브라우저 동작에 따라 달라지는 시나리오는 자동화 Pass만으로 끝내지 않고 실제 브라우저로 확인이 필요하다는 것을 보여 준 사례입니다.

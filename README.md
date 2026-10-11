@@ -5,7 +5,7 @@
 
 📊 **최신 테스트 리포트:** https://sophiachae.github.io/hotel-booking-qa/ (main에 push할 때마다 GitHub Actions가 전체 테스트를 실행하고 갱신)
 
-> AI가 만든 테스트 케이스를 QA 관점에서 검토·보완하고, 수동 테스트와 Playwright 자동화로 실행해 결함 10건(v1.0 6건, v1.1 4건)을 찾은 프로젝트
+> AI가 만든 테스트 케이스를 QA 관점에서 검토·보완하고, 수동 테스트와 Playwright 자동화로 실행해 결함 11건(v1.0 6건, v1.1 5건)을 찾은 프로젝트
 
 **테스트 대상 앱은 Claude로 만든 실습용 앱이며, 의도적으로 결함이 심어져 있습니다.** 앱 코드는 테스트 대상이므로 수정하지 않았습니다.
 
@@ -160,14 +160,19 @@ v1.0 테스트를 **하나도 고치지 않고** v1.1에 실행한 뒤, 깨진 �
 | # | 제목 | 유형 | 심각도 | 발견 경로 | 관련 TC |
 |---|---|---|---|---|---|
 | [#7](https://github.com/sophiachae/hotel-booking-qa/issues/7) | 화면은 이메일을 계정 이메일로 고정하지만 서버는 다른 이메일로 회원 예약을 저장함 (UI 우회) | bug | major | 자동화 | TC-65 |
-| [#8](https://github.com/sophiachae/hotel-booking-qa/issues/8) | 예약 입력 중 세션이 만료되면 안내 없이 비회원 예약으로 저장되어 회원 예약 목록에서 사라짐 | bug (needs-spec) | major | 자동화 | TC-64 |
+| [#8](https://github.com/sophiachae/hotel-booking-qa/issues/8) | 예약 입력 중 세션이 만료되면 안내 없이 비회원 예약으로 저장되어 회원 예약 목록에서 사라짐 | bug (needs-spec) | major | 자동화 (실제 Chrome 재현) | TC-64 |
 | [#9](https://github.com/sophiachae/hotel-booking-qa/issues/9) | 로그인 실패 횟수 제한이 없음 | enhancement (needs-spec) | - | 자동화 (1회 측정) | TC-67 |
 | [#10](https://github.com/sophiachae/hotel-booking-qa/issues/10) | 소셜 로그인 취소(error) 콜백에서 state를 검증하지 않음 | bug | minor | 수동 탐색 | TC-68 |
+| [#12](https://github.com/sophiachae/hotel-booking-qa/issues/12) | 로그아웃 후 뒤로 가기 시 캐시된 회원 화면에 개인정보가 그대로 노출됨 | enhancement | - | 수동 (실제 Chrome) | TC-66 |
+
+**실제 Chrome 수동 확인 (v1.1 머지 후):** 자동화는 테스트용 Chromium에서 실행되므로, 브라우저 동작에 따라 결과가 달라질 수 있는 2건을 실제 Chrome에서 확인했습니다.
+- TC-64(세션 만료): 자동화와 같은 결과가 재현되었습니다. 안내 없이 비회원 예약으로 저장되었고, 재로그인 후 회원 예약 내역에 나오지 않았습니다(#8).
+- TC-66(로그아웃 후 뒤로 가기): 서버는 정상 차단해 기대결과는 Pass입니다. 다만 **자동화에서는 보이지 않던 캐시 화면이 실제 Chrome에서는 개인정보와 함께 그대로 보여** 개선 제안 #12로 등록했습니다(#6과 같은 계열).
 
 ### 7-4. 인사이트: 명세가 자세해져도 결함은 명세 밖에서 나왔다
 
 v1.1 명세는 에러 코드, 인증 방식, OAuth 흐름까지 자세히 적혀 있었습니다. 그래서 **AI TC 23건은 수정이 1건뿐이었고, AI 원문 기대결과 기준으로 전부 Pass**였습니다.
-반면 **새로 나온 문제 4건은 전부 QA가 추가한 TC에서 발견**되었습니다. 모두 명세가 다루지 않은 상황이었습니다.
+반면 **새로 나온 문제 4건은 전부 QA가 추가한 TC에서 발견**되었습니다. 모두 명세가 다루지 않은 상황이었습니다. (머지 후 실제 Chrome 확인에서 찾은 #12도 QA가 추가한 TC-66에서 나왔습니다.)
 
 | 결함 | 명세 밖 상황 | 명세가 말하는 것 / 말하지 않는 것 |
 |---|---|---|
