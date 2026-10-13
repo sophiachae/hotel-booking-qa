@@ -258,4 +258,7 @@ npx playwright install chromium   # 최초 1회
   - TC-63: 중복 가입 메시지에 가입 경로(구글 등)를 보여줘도 되는지
   - TC-67: 로그인 실패 횟수 제한 정책 ([#9](https://github.com/sophiachae/hotel-booking-qa/issues/9))
   - TC-33: 해외 전화번호 허용 여부 ([#4](https://github.com/sophiachae/hotel-booking-qa/issues/4))
+  - TC-73: 비밀번호 앞뒤 공백 처리와 비밀번호 보기 기능. 지금은 앞 공백까지 비밀번호로 저장되어, 공백 없이 입력하면 로그인되지 않음
+    - 근거: [NIST SP 800-63B 5.1.1.2](https://github.com/usnistgov/800-63-3/blob/nist-pages/sp800-63b/sec5_authenticators.md)는 공백 포함 출력 가능한 ASCII 문자 허용 권장(SHOULD), 연속 공백 병합 가능(MAY), 잘라내기 금지(SHALL NOT). [Google 계정 도움말](https://support.google.com/accounts/answer/32040)은 앞뒤 공백으로 시작·끝나는 비밀번호 사용 불가
+    - 가운데 공백 허용은 권장 방향으로 보고, 앞뒤 공백은 정책 확인 필요
 - **v1.2 이벤트 트래킹 QA:** 검색·객실 선택·예약 완료 등 주요 사용자 행동의 이벤트가 올바른 시점과 값으로 기록되는지 검증
