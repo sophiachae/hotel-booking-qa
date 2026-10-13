@@ -272,6 +272,7 @@ npx playwright install chromium   # 최초 1회
   - TC-67: 로그인 실패 횟수 제한 정책 ([#9](https://github.com/sophiachae/hotel-booking-qa/issues/9))
     - **QA 제안(확정):** 점진적 지연 + 일시 제한(예: 5회 실패 후 15분 동안 계정+IP별 시도 제한, 429와 남은 시간 안내). 계정 잠금은 남의 계정을 일부러 잠그는 데 악용될 수 있고, CAPTCHA는 외부 서비스가 필요함
   - TC-33: 해외 전화번호 허용 여부 ([#4](https://github.com/sophiachae/hotel-booking-qa/issues/4))
+    - **QA 제안(확정):** 국가 선택 + `+국가번호`(E.164) 형식으로 국제 전화번호 허용. 숙박 서비스는 해외 고객이 전제이고 이름은 이미 영문을 받으므로 전화번호도 맞춰야 함. 한 형식으로 저장하면 지금 정규식이 011·016 앞자리와 하이픈 혼용까지 통과시키는 문제([#5](https://github.com/sophiachae/hotel-booking-qa/issues/5))도 국가별 규칙으로 다시 정의할 수 있음. 연락처는 숙소 운영에 필요해 선택 입력보다 나음
   - TC-73: 비밀번호 앞뒤 공백 처리와 비밀번호 보기 기능 ([#14](https://github.com/sophiachae/hotel-booking-qa/issues/14)). 지금은 앞 공백까지 비밀번호로 저장되어, 공백 없이 입력하면 로그인되지 않음
     - 근거: [NIST SP 800-63B 5.1.1.2](https://github.com/usnistgov/800-63-3/blob/nist-pages/sp800-63b/sec5_authenticators.md)는 공백 포함 출력 가능한 ASCII 문자 허용 권장(SHOULD), 연속 공백 병합 가능(MAY), 잘라내기 금지(SHALL NOT). [Google 계정 도움말](https://support.google.com/accounts/answer/32040)은 앞뒤 공백으로 시작·끝나는 비밀번호 사용 불가
     - 가운데 공백 허용은 권장 방향으로 보고, 앞뒤 공백은 정책 확인 필요
