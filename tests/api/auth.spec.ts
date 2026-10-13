@@ -13,7 +13,7 @@ import {
   oauthCallback,
   signupMember,
 } from '../support/auth';
-import { usersByEmail } from '../support/db';
+import { queryDb, usersByEmail } from '../support/db';
 import { E2E_LOG_FILE } from '../support/env';
 
 // v1.1 회원 기능 API 테스트. 기대결과는 docs/SPEC.md(v1.1 명세) 기준.
@@ -64,6 +64,156 @@ test.describe('회원가입·로그인', () => {
     expect(a.code).toBe('INVALID_CREDENTIALS');
     expect(b.code).toBe('INVALID_CREDENTIALS');
     expect(a.message, '어느 쪽이 틀렸는지 구분하지 않음').toBe(b.message);
+  });
+});
+
+test.describe('회원가입·로그인 보강', () => {
+  test('TC-70 이메일 앞뒤 공백 가입·로그인', async () => {
+    // 명세 없음, 확인필요. 기대: 공백을 제거해 정상 처리하거나 400. 공백 포함 이메일로 계정이 생성되면 안 됨
+    const email = uniqueEmail('TC-70');
+    const ctx = await freshContext();
+    try {
+      const signup = await test.step('① 앞뒤 공백 이메일로 가입', async () => {
+        const res = await ctx.post('/api/auth/signup', {
+          data: { name: '공백', email: ` ${email} `, password: DEFAULT_PASSWORD },
+        });
+        const json = await res.json();
+        test.info().annotations.push({
+          type: '관찰',
+          description: `가입 응답 ${res.status()} ${json.user ? `저장 이메일 "${json.user.email}"` : JSON.stringify(json.error)}`,
+        });
+        expect([201, 400], `가입 응답: ${await res.text()}`).toContain(res.status());
+        return res;
+      });
+
+      await test.step('② DB에 공백 포함 이메일 계정 없음', async () => {
+        const rows = queryDb<{ email: string }>('SELECT email FROM users WHERE email LIKE ?', `%${email}%`);
+        expect(rows.filter((r) => r.email !== r.email.trim()), '공백 포함 이메일 계정').toEqual([]);
+      });
+
+      if (signup.status() === 201) {
+        await test.step('③ 공백 없이 로그인 → 같은 계정', async () => {
+          const res = await ctx.post('/api/auth/login', { data: { email, password: DEFAULT_PASSWORD } });
+          expect(res.status(), await res.text()).toBe(200);
+          expect((await res.json()).user.email).toBe(email);
+        });
+      }
+    } finally {
+      await ctx.dispose();
+    }
+  });
+
+  // 명세 164행(details에 필드 키), 177행(이름 1~50자 / 이메일 형식 / 전화번호 010-1234-5678 또는 01012345678)
+  // 전화번호는 예약 API와 같은 정규식(PHONE_RE)을 써서 #5가 재현되므로 테스트를 나눠 test.fail로 표시
+  async function expectSignupRejected(field: string, override: Record<string, string>) {
+    const ctx = await freshContext();
+    try {
+      const email = uniqueEmail('TC-72');
+      const res = await ctx.post('/api/auth/signup', {
+        data: { name: '형식', email, password: DEFAULT_PASSWORD, phone: '010-5555-6666', ...override },
+      });
+      await expectValidationError(res, field);
+      expect.soft(usersByEmail(email), '계정 생성 안 됨').toHaveLength(0);
+    } finally {
+      await ctx.dispose();
+    }
+  }
+
+  test('TC-72 가입 필수값·형식 오류: 이름·이메일', async () => {
+    const cases = [
+      { label: '이름 0자', field: 'name', override: { name: '' } },
+      { label: '이름 51자', field: 'name', override: { name: '가'.repeat(51) } },
+      { label: '이메일 형식 오류', field: 'email', override: { email: 'not-an-email' } },
+    ];
+    for (const c of cases) {
+      await test.step(c.label, () => expectSignupRejected(c.field, c.override));
+    }
+  });
+
+  test('TC-72 가입 필수값·형식 오류: 전화번호 (#5)', async () => {
+    test.fail(true, `결함 #5 ${ISSUES.PHONE_FORMAT}`);
+    await test.step('전화 010-123-4567', () => expectSignupRejected('phone', { phone: '010-123-4567' }));
+  });
+
+  test('TC-73 비밀번호 특수문자·공백', async () => {
+    // 명세 없음, 확인필요. 명세는 "영문과 숫자를 포함한 8~64자"만 정의 → 허용 여부를 기록하고,
+    // 허용하면 같은 비밀번호로 로그인되는지 / 거부하면 password 검증 오류인지만 확인
+    await test.step('앞 공백 " Abcd1234"로 가입 → 공백 없이 "Abcd1234"로 로그인 (결과 기록)', async () => {
+      const ctx = await freshContext();
+      try {
+        const email = uniqueEmail('TC-73');
+        const signup = await ctx.post('/api/auth/signup', { data: { name: '특수', email, password: ' Abcd1234' } });
+        expect([201, 400], await signup.text()).toContain(signup.status());
+        let result = `가입 ${signup.status() === 201 ? '허용 (201)' : `거부 (${signup.status()})`}`;
+        if (signup.status() === 201) {
+          const login = await ctx.post('/api/auth/login', { data: { email, password: 'Abcd1234' } });
+          result += ` → 공백 없이 로그인 ${login.status() === 200 ? '성공 (200, 앞 공백 제거됨)' : `실패 (${login.status()}, 공백까지 비밀번호로 저장)`}`;
+        }
+        test.info().annotations.push({ type: '관찰', description: `" Abcd1234" ${result}` });
+      } finally {
+        await ctx.dispose();
+      }
+    });
+
+    for (const password of ['Abcd1234!', 'Abcd 1234']) {
+      await test.step(`비밀번호 "${password}"`, async () => {
+        const ctx = await freshContext();
+        try {
+          const email = uniqueEmail('TC-73');
+          const res = await ctx.post('/api/auth/signup', { data: { name: '특수', email, password } });
+          test.info().annotations.push({
+            type: '관찰',
+            description: `"${password}" → ${res.status() === 201 ? '허용 (201)' : `거부 (${res.status()} ${await res.text()})`}`,
+          });
+          if (res.status() === 201) {
+            const login = await ctx.post('/api/auth/login', { data: { email, password } });
+            expect(login.status(), '같은 비밀번호로 로그인').toBe(200);
+          } else {
+            await expectValidationError(res, 'password');
+          }
+        } finally {
+          await ctx.dispose();
+        }
+      });
+    }
+  });
+
+  test('TC-75 응답·DB에 비밀번호 노출', async () => {
+    // 명세 323행: password_hash는 scrypt 해시
+    const password = DEFAULT_PASSWORD;
+    const email = uniqueEmail('TC-75');
+    const ctx = await freshContext();
+    const passwordKeys = (value: unknown, path = ''): string[] =>
+      value && typeof value === 'object'
+        ? Object.entries(value).flatMap(([k, v]) => [
+            ...(/password/i.test(k) ? [`${path}${k}`] : []),
+            ...passwordKeys(v, `${path}${k}.`),
+          ])
+        : [];
+    try {
+      for (const [label, call] of [
+        ['가입', () => ctx.post('/api/auth/signup', { data: { name: '노출', email, password } })],
+        ['로그인', () => ctx.post('/api/auth/login', { data: { email, password } })],
+        ['/me', () => ctx.get('/api/auth/me')],
+      ] as const) {
+        await test.step(`${label} 응답에 비밀번호 관련 값 없음`, async () => {
+          const res = await call();
+          expect(res.ok(), await res.text()).toBe(true);
+          const text = await res.text();
+          expect.soft(passwordKeys(JSON.parse(text)), 'password 관련 키').toEqual([]);
+          expect.soft(text, '평문 비밀번호').not.toContain(password);
+        });
+      }
+
+      await test.step('DB에는 해시만 저장', async () => {
+        const [row] = queryDb<{ password_hash: string | null }>('SELECT password_hash FROM users WHERE email = ?', email);
+        expect(row.password_hash, 'password_hash 저장됨').toBeTruthy();
+        expect(row.password_hash).not.toContain(password);
+        expect(row.password_hash!.length, '해시 길이').toBeGreaterThan(32);
+      });
+    } finally {
+      await ctx.dispose();
+    }
   });
 });
 

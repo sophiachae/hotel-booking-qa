@@ -59,6 +59,23 @@ test.describe('이메일 회원가입·로그인', () => {
 
     await expect(page).toHaveURL(`${baseURL}/index.html`);
   });
+
+  test('TC-79 로그인 상태에서 로그인·가입 화면 접근', async ({ page, context }) => {
+    // 명세 없음, 확인필요. 기대: 로그인·가입 화면에 머물지 않고 홈 또는 returnTo로 이동
+    const m = await signupMember('TC-79');
+    await loginBrowser(context, m.token);
+
+    for (const path of ['/login.html', '/signup.html']) {
+      await test.step(`${path} 직접 접근 → 홈`, async () => {
+        await page.goto(path);
+        await expect(page).toHaveURL(/\/(index\.html)?$/);
+      });
+    }
+    await test.step('/login.html?returnTo=/my.html 직접 접근 → returnTo', async () => {
+      await page.goto('/login.html?returnTo=/my.html');
+      await expect(page).toHaveURL(/\/my\.html$/);
+    });
+  });
 });
 
 test.describe('소셜 로그인 (Mock OAuth)', () => {
@@ -148,6 +165,42 @@ test.describe('회원 예약 화면', () => {
     expect(body.bookedAs).toBe('MEMBER');
     const [row] = queryDb<{ user_id: number }>('SELECT user_id FROM reservations WHERE id = ?', body.id);
     expect(row.user_id).toBe(m.id);
+  });
+
+  test('TC-78 가입 직후 바로 예약', async ({ page }) => {
+    // 명세 110행(회원 정보 자동 입력·이메일 고정), 257행(로그인 상태 예약 → MEMBER)
+    const email = uniqueEmail('TC-78');
+    const phone = '010-7878-7878';
+
+    await test.step('① 회원가입 (화면)', async () => {
+      await page.goto('/signup.html');
+      await page.getByTestId('signup-name').fill('바로예약');
+      await page.getByTestId('signup-email').fill(email);
+      await page.getByTestId('signup-password').fill(DEFAULT_PASSWORD);
+      await page.getByTestId('signup-password-confirm').fill(DEFAULT_PASSWORD);
+      await page.getByTestId('signup-phone').fill(phone);
+      await page.getByTestId('signup-submit').click();
+      await expect(page.getByTestId('nav-user-name')).toHaveText('바로예약님');
+    });
+
+    const [user] = usersByEmail(email);
+    const body = await test.step('② 바로 예약', async () => {
+      await page.goto(bookUrl(9, stay(160, 161), 4));
+      await expect(page.getByTestId('booking-member-notice')).toBeVisible();
+      await expect(page.getByTestId('guest-email')).toHaveValue(email);
+      return submitBookingAndFetch(page, email);
+    });
+
+    await test.step('③ bookedAs MEMBER, user_id 연결', async () => {
+      expect(body.bookedAs).toBe('MEMBER');
+      const [row] = queryDb<{ user_id: number }>('SELECT user_id FROM reservations WHERE id = ?', body.id);
+      expect(row.user_id).toBe(user.id);
+    });
+
+    await test.step('④ 내 예약 화면의 회원 예약 목록에 표시', async () => {
+      await page.goto('/my.html');
+      await expect(page.getByTestId(`my-reservation-item-${body.id}`)).toBeVisible();
+    });
   });
 
   test('TC-66 로그아웃 후 뒤로 가기', async ({ page, context, request }) => {
