@@ -12,7 +12,9 @@
     "test:api": "playwright test --project=api",
     "test:report": "playwright show-report",
     "test:watch": "playwright test --project=ui --headed --workers=1",
-    "test:debug-ui": "playwright test --ui"
+    "test:debug-ui": "playwright test --ui",
+    "pii:check": "node scripts/check-pii.js",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "engines": {
     "node": ">=20"

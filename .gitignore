@@ -7,3 +7,4 @@ BUGS_SPOILER.md
 test-results/
 playwright-report/
 blob-report/
+.pii-denylist

@@ -1,0 +1,31 @@
+name: PII Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pii-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # 검사기가 잡아야 할 값을 실제로 잡는지 먼저 확인 (검사기가 고장 나면 무조건 통과하는 것을 막음)
+      - name: Self-test the checker
+        run: node scripts/check-pii.js --self-test
+
+      # PII_DENYLIST 시크릿: 규칙으로 잡을 수 없는 실제 값(이름 등). 값은 저장소에 두지 않는다.
+      - name: Scan tracked files
+        env:
+          PII_DENYLIST: ${{ secrets.PII_DENYLIST }}
+        run: node scripts/check-pii.js
