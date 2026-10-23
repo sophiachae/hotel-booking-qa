@@ -59,6 +59,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="analytics.js"></script>
   <script>
     (async () => {
       const returnTo = App.safeReturnTo(App.param('returnTo') || '/index.html');
@@ -116,6 +117,7 @@
               phone: fields.phone.value.trim(),
             }),
           });
+          Analytics.trackNext('signup_completed', { method: 'email' });
           location.href = returnTo;
         } catch (err) {
           if (err.details) Object.entries(err.details).forEach(([k, msg]) => fields[k] && setFieldError(k, msg));

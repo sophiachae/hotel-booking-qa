@@ -88,6 +88,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="analytics.js"></script>
   <script>
     (async () => {
       const me = await App.me();
@@ -222,6 +223,15 @@
           render(r);
           loadMyReservations();
           App.show(cancelResult, '예약이 취소되었습니다.');
+          Analytics.track('reservation_cancelled', {
+            reservation_id: r.id,
+            hotel_id: r.hotel.id,
+            room_id: r.room.id,
+            nights: r.nights,
+            total_price: r.totalPrice,
+            booked_as: r.bookedAs.toLowerCase(),
+            days_before_check_in: App.nights(App.dateOffset(0), r.checkIn),
+          });
         } catch (e) {
           App.hide(confirmBox);
           App.show(cancelError, e.message);

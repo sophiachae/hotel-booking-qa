@@ -3,6 +3,7 @@ const express = require('express');
 const { seedIfEmpty, DB_PATH } = require('./src/db');
 const config = require('./src/config');
 const logger = require('./src/logger');
+const analytics = require('./src/analytics');
 const auth = require('./src/auth');
 const mockOAuth = require('./src/mockOAuth');
 const routes = require('./src/routes');
@@ -39,6 +40,14 @@ const seeded = seedIfEmpty();
 app.listen(PORT, () => {
   logger.info(
     `Server started on http://localhost:${PORT} (db=${DB_PATH}, seeded=${seeded}, ` +
-      `guestCheckout=${config.guestCheckout}, sessionTtlMinutes=${config.sessionTtlMinutes})`
+      `guestCheckout=${config.guestCheckout}, sessionTtlMinutes=${config.sessionTtlMinutes}, ` +
+      `analytics=${analytics.enabled ? 'on' : 'off'})`
   );
+});
+
+// 종료 전에 서버 이벤트 큐를 비운다
+['SIGINT', 'SIGTERM'].forEach((signal) => {
+  process.once(signal, () => {
+    analytics.shutdown().finally(() => process.exit(0));
+  });
 });

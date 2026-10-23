@@ -48,6 +48,7 @@ function summarizeResult(body) {
   if (body.hotel && Array.isArray(body.rooms)) {
     return `hotelId=${body.hotel.id} rooms=${body.rooms.length}`;
   }
+  if (body.posthog) body = { ...body, posthog: { ...body.posthog, key: '***' } };
   if (body.id && body.status) {
     return `reservationId=${body.id} status=${body.status} totalPrice=${body.totalPrice}`;
   }
