@@ -48,6 +48,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="analytics.js"></script>
   <script>
     (async () => {
       const form = document.getElementById('search-form');
@@ -95,6 +96,13 @@
           return;
         }
 
+        Analytics.trackNext('search_submitted', {
+          city: city.value,
+          check_in: checkIn.value,
+          check_out: checkOut.value,
+          nights: App.nights(checkIn.value, checkOut.value),
+          guests: g,
+        });
         location.href = 'results.html?' + App.query({
           city: city.value,
           checkIn: checkIn.value,

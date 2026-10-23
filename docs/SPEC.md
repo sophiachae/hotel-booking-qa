@@ -1,4 +1,4 @@
-# 앱 명세: 미니 호텔 예약 웹앱 (Mini Hotel Booking) v1.1
+# 앱 명세: 미니 호텔 예약 웹앱 (Mini Hotel Booking) v1.2
 
 > [← QA 포트폴리오 소개(README)로 돌아가기](../README.md) · [변경 내역(CHANGELOG)](CHANGELOG.md)
 
@@ -10,7 +10,9 @@ DB 검증, 로그 분석 연습에 사용할 수 있습니다.
 **v1.1**부터 회원 기능이 추가되었습니다: 이메일 회원가입·로그인, 카카오·구글 소셜 로그인(Mock OAuth),
 회원 예약 내역, 비회원 예약 허용 여부 스위치. 변경 내역은 `CHANGELOG.md`를 참고하세요.
 
-> ⚠️ 이 앱에는 **의도적으로 심어 둔 버그 2개**가 있습니다. 직접 찾아본 뒤 `BUGS_SPOILER.md`에서 확인하세요.
+**v1.2**부터 PostHog 이벤트 트래킹이 추가되었습니다 (`POSTHOG_KEY`가 있을 때만 동작). 이벤트 명세는 `EVENTS.md`를 참고하세요.
+
+> ⚠️ 이 앱에는 **의도적으로 심어 둔 버그 2개**가 있고, v1.2에서 2개가 더 추가되었습니다. 직접 찾아본 뒤 `BUGS_SPOILER.md`에서 확인하세요.
 
 ---
 
@@ -39,6 +41,8 @@ npm start
 | `LOG_DIR` | `logs` | 로그 폴더 |
 | `GUEST_CHECKOUT` | `on` | `off`/`false`/`0`이면 비회원 예약 불가 (401 `LOGIN_REQUIRED`) |
 | `SESSION_TTL_MINUTES` | `10080` (7일) | 로그인 세션 유효 시간. 만료 테스트 시 `1` 등으로 줄여서 사용 |
+| `POSTHOG_KEY` | (없음) | PostHog 프로젝트 API 키. 없으면 이벤트 트래킹 꺼짐 (`EVENTS.md`) |
+| `POSTHOG_HOST` | `https://eu.i.posthog.com` | PostHog 주소 |
 
 > Windows PowerShell: `$env:GUEST_CHECKOUT="off"; npm start`
 
@@ -67,6 +71,7 @@ mini-hotel/
 │  ├─ auth.js           # 회원가입·로그인·세션·OAuth 콜백
 │  ├─ mockOAuth.js      # 로컬 Mock OAuth 서버 (카카오/구글 흉내)
 │  ├─ password.js       # 비밀번호 해시 (scrypt)
+│  ├─ analytics.js      # PostHog 서버 이벤트 (posthog-node)
 │  ├─ config.js         # 환경 변수 설정
 │  ├─ utils.js          # 검증 유틸, 에러 클래스
 │  └─ logger.js         # logs/app.log 기록 (비밀번호 등 마스킹)
@@ -80,6 +85,7 @@ mini-hotel/
 │  ├─ login.html        # 로그인 (이메일 / 카카오 / 구글)
 │  ├─ signup.html       # 이메일 회원가입
 │  ├─ app.js, style.css
+│  ├─ analytics.js      # PostHog 화면 이벤트 (공식 스니펫, 키 없으면 꺼짐)
 ├─ scripts/reset-db.js
 ├─ data/hotel.db        # (자동 생성)
 └─ logs/app.log         # (자동 생성)
@@ -207,7 +213,9 @@ mini-hotel/
 
 ### GET `/api/config`
 
-`{ "guestCheckout": true, "loginProviders": ["email", "kakao", "google"] }`
+`{ "guestCheckout": true, "loginProviders": ["email", "kakao", "google"], "posthog": null }`
+
+`posthog`는 `POSTHOG_KEY`가 있으면 `{ "key": "phc_...", "host": "https://eu.i.posthog.com" }`, 없으면 `null` (v1.2).
 
 
 ### GET `/api/hotels`

@@ -69,6 +69,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="analytics.js"></script>
   <script>
     (async () => {
       const hotelId = App.param('hotelId');
@@ -114,6 +115,16 @@
       App.$('booking-guests').textContent = `${stay.guests}명`;
       App.$('booking-price-per-night').textContent = App.won(room.pricePerNight);
       App.$('booking-total').textContent = App.won(total);
+
+      const bookingProps = {
+        hotel_id: hotel.id,
+        room_id: room.id,
+        nights,
+        guests: Number(stay.guests),
+        total_price: total,
+        booked_as: me ? 'member' : 'guest',
+      };
+      Analytics.track('booking_started', bookingProps);
 
       const fields = {
         name: App.$('guest-name'),
@@ -164,8 +175,12 @@
         submit.disabled = true;
         submit.textContent = '예약 처리 중...';
         try {
+          const headers = { 'Content-Type': 'application/json' };
+          const distinctId = Analytics.distinctId();
+          if (distinctId) headers['X-Analytics-Distinct-Id'] = distinctId;
           const reservation = await App.api('/api/reservations', {
             method: 'POST',
+            headers,
             body: JSON.stringify({
               roomId,
               checkIn: stay.checkIn,
@@ -189,6 +204,11 @@
             email: fields.email.value.trim(),
             total,
           }));
+          Analytics.trackNext('reservation_completed', {
+            ...bookingProps,
+            source: 'web',
+            reservation_id: reservation.id,
+          });
           location.href = 'complete.html?' + App.query({ id: reservation.id });
         } catch (err) {
           if (err.code === 'LOGIN_REQUIRED' || err.status === 401) {

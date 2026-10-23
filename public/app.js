@@ -111,6 +111,7 @@ const App = {
   async logout() {
     try {
       await App.api('/api/auth/logout', { method: 'POST' });
+      await Analytics.logout();
     } finally {
       location.href = 'index.html';
     }
