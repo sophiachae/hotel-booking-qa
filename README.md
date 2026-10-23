@@ -258,7 +258,7 @@ npx playwright install chromium   # 최초 1회
 | 회원 전용 | 3101 | `GUEST_CHECKOUT=off` | `data/e2e-guest-off.db` / `logs/e2e-guest-off/` | `tests/guest-off` (TC-58) |
 | 세션 1분 | 3102 | `SESSION_TTL_MINUTES=1` | `data/e2e-short-session.db` / `logs/e2e-short-session/` | `tests/short-session` (TC-46, 64) |
 
-- 세션 만료·OAuth code 만료 확인은 61초씩 기다리므로 전체 실행에 약 75초 걸립니다 (병렬 실행).
+- 세션 만료·OAuth code 만료 확인은 61초씩 기다립니다. 병렬 실행 기준 CI의 테스트 단계는 약 2분 15초, 워크플로 전체는 약 3분 걸립니다 (2026-10-24 PR #16 실행 기준).
 - 로그인이 필요한 테스트는 테스트마다 새 회원을 가입시켜 사용합니다. 가입·로그인은 일회용 요청 컨텍스트에서 하고, 토큰은 `Authorization: Bearer`로 명시해서 씁니다 (Playwright `request` 픽스처가 쿠키를 저장해 의도치 않게 로그인 상태가 되는 것을 막기 위해).
 - 날짜는 하드코딩하지 않고 실행일 기준 "오늘+n일"로 계산하므로, 언제 실행해도 같은 결과가 나옵니다.
 - 테스트가 병렬로 실행되므로 TC마다 서로 다른 객실·기간·계정을 사용해 데이터가 겹치지 않게 했습니다.
