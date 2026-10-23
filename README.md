@@ -2,12 +2,33 @@
 
 [![Playwright Tests](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/playwright.yml/badge.svg?branch=main)](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/playwright.yml)
 [![Test Report](https://img.shields.io/badge/Playwright-%ED%85%8C%EC%8A%A4%ED%8A%B8%20%EB%A6%AC%ED%8F%AC%ED%8A%B8-2EAD33?logo=playwright)](https://sophiachae.github.io/hotel-booking-qa/)
+[![PII Check](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/pii-check.yml/badge.svg?branch=main)](https://github.com/sophiachae/hotel-booking-qa/actions/workflows/pii-check.yml)
 
 📊 **최신 테스트 리포트:** https://sophiachae.github.io/hotel-booking-qa/ (main에 push할 때마다 GitHub Actions가 전체 테스트를 실행하고 갱신)
 
 > AI가 만든 테스트 케이스를 QA 관점에서 검토·보완하고, 수동 테스트와 Playwright 자동화로 실행해 결함 7건과 개선 제안 7건(총 14건: v1.0 6건, v1.1 8건)을 찾은 프로젝트
 
 **테스트 대상 앱은 Claude로 만든 실습용 앱이며, 의도적으로 결함이 심어져 있습니다.** 앱 코드는 테스트 대상이므로 수정하지 않았습니다.
+
+## 한눈에 보기
+
+| 항목 | 내용 |
+|---|---|
+| 범위 | v1.0 예약 기능 → v1.1 회원 기능(이메일·카카오·구글 로그인, 회원 예약) |
+| TC | **80건** — AI 원문 50 / AI수정 15 / QA추가 15 · 실행 결과 Pass 63 / Fail 12 / 확인필요 5 |
+| 자동화 | TC 62건을 **테스트 64개**로 자동화 (UI 23, API 38, 설정별 서버 3) · 나머지 18건은 수동 실행·1회 측정 |
+| 이슈 | **14건** — 결함 7 / 개선 제안 7 (v1.0 6건, v1.1 8건) |
+| CI | push·PR마다 GitHub Actions로 전체 테스트 + 개인정보 검사, 리포트는 [GitHub Pages](https://sophiachae.github.io/hotel-booking-qa/) |
+
+**핵심 결론:** AI TC는 명세에 적힌 규칙을 잘 확인했지만, 결함은 명세 밖 상황에서 나왔고 그 TC는 사람이 채워야 했습니다.
+v1.1처럼 명세가 자세해져도 같은 패턴이 반복되었습니다 ([6-1](#6-1-ai-tc-리뷰-ai가-잘한-것과-사람이-채워야-한-것), [7-4](#7-4-인사이트-명세가-자세해져도-결함은-명세-밖에서-나왔다)).
+
+**먼저 볼 만한 사례 3개**
+1. **[기간 겹침 4유형 분석 (#2)](#6-2-기간-겹침-4유형-패턴-분석-2)** — 4가지 겹침 유형을 비교해 패턴을 찾고 결함 하나로 묶음. 화면만 봤다면 놓쳤을 서버 결함
+2. **[UI 우회로 찾은 회원 이메일 결함 (#7)](#7-4-인사이트-명세가-자세해져도-결함은-명세-밖에서-나왔다)** — 화면은 막지만 서버는 막지 않는 유형. v1.0 #2에서 얻은 관점을 v1.1에 적용
+3. **[로그 시간순 분석으로 찾은 OAuth state 결함 (#10)](#7-5-10을-찾은-과정-수동-탐색--로그-분석--재현--명세-대조)** — "버그 아님"으로 끝날 뻔한 현상을 로그 → 재현 → 명세 대조로 확정
+
+**진행 상태:** v1.1까지 완료. 정책 질문 5건은 QA 제안까지 정리([9장](#9-다음-계획)), v1.2(이벤트 트래킹)는 계획 단계입니다.
 
 ## 1. 프로젝트 소개
 
@@ -160,7 +181,7 @@ v1.0 테스트를 **하나도 고치지 않고** v1.1에 실행한 뒤, 깨진 �
 - 보강 TC의 Fail 1건(TC-72)은 회원가입 API에서 전화번호 `010-123-4567`이 통과한 것으로, 예약 API와 같은 정규식을 써서 v1.0의 [#5](https://github.com/sophiachae/hotel-booking-qa/issues/5)에 묶었습니다.
 - 확인필요 4건은 명세에 정책이 없어 확인을 요청한 케이스입니다: 회원 예약을 비로그인으로 조회·취소(TC-62), 가입 경로가 드러나는 중복 가입 메시지(TC-63), 로그인 실패 횟수 제한(TC-67), 비밀번호 앞뒤 공백 처리(TC-73). QA 정책 제안은 [9장](#9-다음-계획)에 있습니다.
 - TC-69, 71, 77은 QA가 codegen으로 녹화한 뒤 직접 다듬어 자동화했습니다(`tests/ui/my-tests.spec.ts`). 기대값을 일부러 틀리게 바꿔 테스트가 실패하는 것까지 확인했습니다.
-- 자동화: 36건 (UI 15, API 18, 회원 전용 서버 1, 세션 1분 서버 2). TC-67은 1회 측정, TC-62·63은 정책이 정해진 뒤 자동화할 예정입니다.
+- 자동화: TC 36건 (UI 15, API 18, 회원 전용 서버 1, 세션 1분 서버 2). TC-60·72는 조건별로 테스트를 2개씩 두어 테스트 수는 38개입니다. TC-67은 1회 측정, TC-62·63은 정책이 정해진 뒤 자동화할 예정입니다.
 - 실제 Chrome 수동 확인: TC-64, 66(머지 후), TC-74, 76, 80
 
 ### 7-3. v1.1 발견 결함·개선 제안
@@ -237,18 +258,40 @@ npx playwright install chromium   # 최초 1회
 | 회원 전용 | 3101 | `GUEST_CHECKOUT=off` | `data/e2e-guest-off.db` / `logs/e2e-guest-off/` | `tests/guest-off` (TC-58) |
 | 세션 1분 | 3102 | `SESSION_TTL_MINUTES=1` | `data/e2e-short-session.db` / `logs/e2e-short-session/` | `tests/short-session` (TC-46, 64) |
 
-- 세션 만료·OAuth code 만료 확인은 61초씩 기다리므로 전체 실행에 약 75초 걸립니다 (병렬 실행).
+- 세션 만료·OAuth code 만료 확인은 61초씩 기다립니다. 병렬 실행 기준 CI의 테스트 단계는 약 2분 15초, 워크플로 전체는 약 3분 걸립니다 (2026-10-24 PR #16 실행 기준).
 - 로그인이 필요한 테스트는 테스트마다 새 회원을 가입시켜 사용합니다. 가입·로그인은 일회용 요청 컨텍스트에서 하고, 토큰은 `Authorization: Bearer`로 명시해서 씁니다 (Playwright `request` 픽스처가 쿠키를 저장해 의도치 않게 로그인 상태가 되는 것을 막기 위해).
 - 날짜는 하드코딩하지 않고 실행일 기준 "오늘+n일"로 계산하므로, 언제 실행해도 같은 결과가 나옵니다.
 - 테스트가 병렬로 실행되므로 TC마다 서로 다른 객실·기간·계정을 사용해 데이터가 겹치지 않게 했습니다.
-- **CI:** main에 push하면 GitHub Actions([워크플로](.github/workflows/playwright.yml))가 같은 테스트를 실행하고, HTML 리포트를 [GitHub Pages](https://sophiachae.github.io/hotel-booking-qa/)에 올립니다. 전체 64건 중 알려진 결함 10건(v1.0 5건, v1.1 5건)은 `test.fail()`로 표시되어 있어, 배지가 초록색이면 "새로운 실패 없음"을 뜻합니다.
+- **CI:** main에 push하면 GitHub Actions([워크플로](.github/workflows/playwright.yml))가 같은 테스트를 실행하고, HTML 리포트를 [GitHub Pages](https://sophiachae.github.io/hotel-booking-qa/)에 올립니다. 전체 테스트 64개(TC 62건: v1.0 26 + v1.1 36, TC-60·72는 2개씩) 중 알려진 결함 10개(v1.0 5개, v1.1 5개)는 `test.fail()`로 표시되어 있어, 배지가 초록색이면 "새로운 실패 없음"을 뜻합니다.
 - 앱을 직접 실행하는 방법은 [앱 명세](docs/SPEC.md#1-실행-방법)를 참고하세요.
+
+### 개인정보 검사
+
+테스트 데이터·로그·이슈 근거에 실제 개인정보가 섞이지 않도록, 커밋 전과 CI에서 저장소를 검사합니다 ([`scripts/check-pii.js`](scripts/check-pii.js)).
+
+| 명령 | 설명 |
+|---|---|
+| `npm run hooks:install` | 최초 1회. 커밋할 때마다 스테이징한 내용을 자동 검사 (`.githooks/pre-commit`) |
+| `npm run pii:check` | git에 올라간 파일 전체 검사 |
+| `node scripts/check-pii.js --self-test` | 검사기가 잡아야 할 값을 실제로 잡는지 확인 |
+
+| 대상 | 통과 기준 |
+|---|---|
+| 이메일 | 테스트용 예약 도메인(`*.test`, `example.com` 등). `test.com`은 v1.0부터 써 온 값이라 허용 목록에 두고, 새 데이터는 `example.com`·`*.test`를 씀 |
+| 한국 휴대폰 번호 | 테스트용 번호대가 따로 없어서 [허용 목록](scripts/pii-allowlist.json)에 등록한 가짜 번호만 통과. 새 번호는 일부러 등록해야 함 |
+| 영국 휴대폰 번호 | Ofcom 드라마·테스트용 번호대(`07700 900000~900999`)만 통과 |
+| 이름 등 실제 값 | 규칙으로 잡을 수 없어서 저장소 밖의 금지 목록과 비교: 로컬 `.pii-denylist`(git 제외), CI `PII_DENYLIST` 시크릿 |
+
+- 엑셀(.xlsx)처럼 압축된 파일은 일반 검색에 걸리지 않으므로, 압축을 풀어 내부 XML까지 검사합니다.
+- 공개 저장소의 CI 로그는 누구나 볼 수 있으므로, 발견한 값은 일부만 출력하고 금지 목록 일치는 값을 출력하지 않습니다.
+- CI는 실제 검사 전에 `--self-test`를 먼저 돌립니다. 검사기가 고장 나서 무엇이든 통과시키는 상황을 막기 위해서입니다.
 
 ### 폴더 구조
 
 ```
 ├─ README.md                 # QA 포트폴리오 소개 (이 문서)
-├─ .github/workflows/        # GitHub Actions: push마다 테스트 실행, 리포트를 Pages에 배포
+├─ .github/workflows/        # GitHub Actions: push마다 테스트 실행·리포트 Pages 배포(playwright.yml), 개인정보 검사(pii-check.yml)
+├─ .githooks/pre-commit      # 커밋 전 개인정보 검사 (npm run hooks:install)
 ├─ docs/
 │  ├─ SPEC.md                # 앱 명세 v1.1 (API, DB, 로그, data-testid)
 │  ├─ CHANGELOG.md           # 앱 변경 내역
@@ -263,7 +306,10 @@ npx playwright install chromium   # 최초 1회
 │  └─ support/               # 날짜·API·DB·인증(가입, 로그인, Mock OAuth) 헬퍼
 ├─ playwright.config.ts
 ├─ server.js, src/, public/  # 테스트 대상 앱 (결함 포함, 수정하지 않음)
-└─ scripts/reset-db.js
+└─ scripts/
+   ├─ reset-db.js
+   ├─ check-pii.js           # 개인정보 검사기 (압축 파일 내부 포함)
+   └─ pii-allowlist.json     # 테스트용으로 정한 가짜 번호·도메인 허용 목록
 ```
 
 ## 9. 다음 계획
