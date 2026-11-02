@@ -37,6 +37,7 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="analytics.js"></script>
   <script>
     (async () => {
       const id = App.param('id');
@@ -77,6 +78,27 @@
               </div>
             </div>`;
         }).join('');
+
+        rooms.filter((r) => hasStay && r.available).forEach((r) => {
+          App.$(`room-select-btn-${r.id}`).addEventListener('click', () => {
+            Analytics.trackNext('room_selected', {
+              hotel_id: hotel.id,
+              room_id: r.id,
+              price_per_night: r.pricePerNight,
+              nights,
+              guests: Number(stay.guests),
+            });
+          });
+        });
+
+        Analytics.track('hotel_viewed', {
+          hotel_id: hotel.id,
+          city: hotel.city,
+          has_stay: Boolean(hasStay),
+          nights: hasStay ? nights : null,
+          guests: hasStay ? Number(stay.guests) : null,
+          available_room_count: rooms.filter((r) => r.available).length,
+        });
       } catch (e) {
         App.hide(App.$('hotel-loading'));
         App.show(App.$('hotel-error'), e.message);

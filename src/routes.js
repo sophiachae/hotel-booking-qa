@@ -4,6 +4,7 @@ const { db } = require('./db');
 const u = require('./utils');
 const config = require('./config');
 const { requireAuth } = require('./auth');
+const analytics = require('./analytics');
 
 const router = express.Router();
 
@@ -153,7 +154,7 @@ router.get('/hotels/:id/rooms', (req, res) => {
 });
 
 router.get('/config', (req, res) => {
-  res.json({ guestCheckout: config.guestCheckout, loginProviders: config.loginProviders });
+  res.json({ guestCheckout: config.guestCheckout, loginProviders: config.loginProviders, posthog: config.posthog });
 });
 
 router.get('/me/reservations', requireAuth, (req, res) => {
@@ -230,8 +231,9 @@ router.post('/reservations', (req, res) => {
     return id;
   });
 
-  const id = create();
-  res.status(201).json(reservationDto(selectReservation.get(id)));
+  const reservation = reservationDto(selectReservation.get(create()));
+  analytics.reservationCompleted(req, reservation);
+  res.status(201).json(reservation);
 });
 
 router.get('/reservations/:id', (req, res) => {

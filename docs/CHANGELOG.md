@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v1.2.0 — 이벤트 트래킹 (PostHog)
+
+### 추가
+- PostHog 이벤트 트래킹: 화면은 `posthog-js` 공식 스니펫(CDN), 서버는 `posthog-node`
+- 환경 변수 `POSTHOG_KEY`, `POSTHOG_HOST` — 키가 없으면 화면·서버 모두 트래킹 꺼짐 (테스트·CI 기본)
+- 이벤트 9종: `search_submitted`, `hotel_viewed`, `room_selected`, `booking_started`, `reservation_completed`(화면+서버), `reservation_cancelled`, `signup_completed`, `login_completed`(`method`), `logout`
+- 로그인·가입 시 `identify(회원 id)`, 로그아웃 시 `reset()`, 비회원은 익명 ID 유지
+- 이벤트 명세서 `docs/EVENTS.md`
+
+### 변경
+- `GET /api/config`에 `posthog`(`{ key, host }` 또는 `null`) 추가
+- `POST /api/reservations`가 `X-Analytics-Distinct-Id` 헤더(선택)를 받아 서버 이벤트의 사용자로 사용
+- 서버 시작 로그에 `analytics=on|off` 추가
+
 ## v1.1.0 — 회원 기능
 
 ### 추가

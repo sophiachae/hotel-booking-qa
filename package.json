@@ -1,6 +1,6 @@
 {
   "name": "mini-hotel-booking",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "QA 포트폴리오용 미니 호텔 예약 웹앱 (테스트 대상 애플리케이션)",
   "private": true,
   "main": "server.js",
@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "posthog-node": "^5.57.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
